@@ -1,0 +1,57 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: wildtrack-db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      SPRING_PROFILES_ACTIVE: localdev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - wildtrack-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d appdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-test:
+    image: postgis/postgis:16-3.4
+    container_name: wildtrack-db-test
+    environment:
+      POSTGRES_DB: ${TEST_DB_NAME}
+      POSTGRES_USER: ${TEST_DB_USER}
+      POSTGRES_PASSWORD: ${TEST_DB_PASS}
+    ports:
+      - "5433:5432"
+    networks:
+      - wildtrack-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${TEST_DB_USER} -d ${TEST_DB_NAME}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: wildtrack-app
+    environment:
+      SPRING_PROFILES_ACTIVE: localdev
+    ports:
+      - "8080:8080"
+    networks:
+      - wildtrack-network
+    depends_on:
+      db:
+        condition: service_healthy
+
+networks:
+  wildtrack-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
