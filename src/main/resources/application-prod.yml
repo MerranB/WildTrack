@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASS}
+
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+   com.wildtrack: INFO
+   root: WARN
