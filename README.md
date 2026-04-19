@@ -128,3 +128,10 @@ src/
         ├── service/        # Mockito unit tests
         └── repository/     # DataJpaTest integration tests
 ```
+## Data Attribution
+Animal tracking data from "[Magnificent
+Frigatebird_BVI_GPS-PTT_2014-2016](https://www.movebank.org/cms/webapp?gwt_fragment=page=studies,path=study19186107)"
+by Jodice, P.G.R., K. Meyer, S. Zaluski, and L. Soanes. Acknowledgements: RSPB,
+National Parks Trust of the Virgin Islands and BVI Department of Conservation
+& Fisheries. Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+Data ingested and transformed for use in WildTrack application.

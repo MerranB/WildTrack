@@ -4,6 +4,7 @@ import com.wildtrack.dto.ItemDto;
 import com.wildtrack.exception.ResourceNotFoundException;
 import com.wildtrack.service.ItemService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wildtrack.service.MovebankIngestionService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -34,6 +35,9 @@ class ItemControllerTest {
 
     @MockitoBean
     private ItemService itemService;
+
+    @MockitoBean
+    private MovebankIngestionService MovebankingestionService;
 
     @Test
     void getAll_returnsOkWithList() throws Exception {
@@ -125,5 +129,21 @@ class ItemControllerTest {
 
         mockMvc.perform(delete("/api/v1/items/99"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void getData_returns_ok() throws Exception {
+        when(MovebankingestionService.getData(10L))
+                .thenReturn("Data retrieved successfully");
+        mockMvc.perform(get("/api/v1/items/getData/10"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Data retrieved successfully"));
+    }
+    @Test
+    void getData_returns_non200() throws Exception {
+        when(MovebankingestionService.getData(10L))
+                .thenThrow(new RuntimeException(String.valueOf(500)));
+        mockMvc.perform(get("/api/v1/items/getData/10"))
+                .andExpect(status().isInternalServerError());
     }
 }

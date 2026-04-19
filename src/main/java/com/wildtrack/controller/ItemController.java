@@ -2,6 +2,7 @@ package com.wildtrack.controller;
 
 import com.wildtrack.dto.ItemDto;
 import com.wildtrack.service.ItemService;
+import com.wildtrack.service.MovebankIngestionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,6 +18,7 @@ import org.springframework.data.domain.Pageable;
 public class ItemController {
 
     private final ItemService itemService;
+    private final MovebankIngestionService movebankIngestionService;
 
 
     @GetMapping
@@ -24,10 +26,15 @@ public class ItemController {
         return ResponseEntity.ok(itemService.findAll(pageable));
     }
 
+    @GetMapping("/getData/{id}")
+    public String getData(@PathVariable Long id) {
+        return movebankIngestionService.getData(id);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ItemDto> getById(@PathVariable Long id) {
         return ResponseEntity.ok(itemService.findById(id));
-    }   
+    }
 
     @PostMapping
     public ResponseEntity<ItemDto> create(@Valid @RequestBody ItemDto dto) {
