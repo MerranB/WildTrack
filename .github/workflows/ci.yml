@@ -41,6 +41,8 @@ jobs:
           TEST_DB_NAME: ${{ secrets.TEST_DB_NAME }}
           TEST_DB_USER: ${{ secrets.TEST_DB_USER }}
           TEST_DB_PASS: ${{ secrets.TEST_DB_PASS }}
+          MOVEBANK_USERNAME: ${{ secrets.MOVEBANK_USERNAME }}
+          MOVEBANK_PASSWORD: ${{ secrets.MOVEBANK_PASSWORD }}
         run: mvn test
 
   quality-gate:
@@ -78,4 +80,6 @@ jobs:
           TEST_DB_NAME: ${{ secrets.TEST_DB_NAME }}
           TEST_DB_USER: ${{ secrets.TEST_DB_USER }}
           TEST_DB_PASS: ${{ secrets.TEST_DB_PASS }}
+          MOVEBANK_USERNAME: ${{ secrets.MOVEBANK_USERNAME }}
+          MOVEBANK_PASSWORD: ${{ secrets.MOVEBANK_PASSWORD }}
         run: mvn verify
