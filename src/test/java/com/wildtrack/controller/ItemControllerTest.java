@@ -134,10 +134,10 @@ class ItemControllerTest {
     @Test
     void getData_returns_ok() throws Exception {
         when(MovebankingestionService.getData(10L))
-                .thenReturn("Data retrieved successfully");
+                .thenReturn("timestamp");
         mockMvc.perform(get("/api/v1/items/getData/10"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Data retrieved successfully"));
+                .andExpect(content().string("timestamp"));
     }
     @Test
     void getData_returns_non200() throws Exception {

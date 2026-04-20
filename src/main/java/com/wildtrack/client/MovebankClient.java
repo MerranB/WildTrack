@@ -48,7 +48,7 @@ public class MovebankClient {
             log.error(response.body());
             throw new RuntimeException(String.valueOf(response.statusCode()));
         } else {
-            return "Data retrieved successfully";
+            return response.body();
         }
 
         }

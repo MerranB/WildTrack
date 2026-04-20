@@ -40,9 +40,10 @@ import static org.mockito.Mockito.when;
     @Test
     void Movebank_getData() throws Exception {
         when(mockResponse.statusCode()).thenReturn(200);
+        when(mockResponse.body()).thenReturn("timestamp");
         when(client.send(any(), any())).thenReturn(mockResponse);
 
-        assertThat("Data retrieved successfully").isEqualTo(Movebankclient.getData(10L));
+        assertThat(Movebankclient.getData(10L)).contains("timestamp");
     }
 
     @Test
