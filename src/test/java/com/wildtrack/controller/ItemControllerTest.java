@@ -1,5 +1,6 @@
 package com.wildtrack.controller;
 
+import com.wildtrack.client.dto.MovebankEventDto;
 import com.wildtrack.dto.ItemDto;
 import com.wildtrack.exception.ResourceNotFoundException;
 import com.wildtrack.service.ItemService;
@@ -11,13 +12,12 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -133,12 +133,21 @@ class ItemControllerTest {
 
     @Test
     void getData_returns_ok() throws Exception {
-        when(MovebankingestionService.getData(10L))
-                .thenReturn("timestamp");
-        mockMvc.perform(get("/api/v1/items/getData/10"))
+        List<MovebankEventDto> test = new ArrayList<MovebankEventDto>();
+        MovebankEventDto movebankEventDto = new MovebankEventDto();
+        movebankEventDto.setTimestamp(LocalDateTime.of(2033,3,30,3,3,33, 333000000));
+        movebankEventDto.setLocation_lat(33.3333d);
+        movebankEventDto.setLocation_long(-33.3333d);
+        movebankEventDto.setIndividual_id("33333333");
+        movebankEventDto.setTag_id("333333333");
+        test.add(movebankEventDto);
+        when(MovebankingestionService.getData(30L))
+                .thenReturn(test);
+        mockMvc.perform(get("/api/v1/items/getData/30"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("timestamp"));
+                .andExpect(content().json(("[{\"id\":0,\"timestamp\":\"2033-03-30T03:03:33.333\",\"location_lat\":33.3333,\"location_long\":-33.3333,\"individual_id\":\"33333333\",\"tag_id\":\"333333333\"}]")));
     }
+
     @Test
     void getData_returns_non200() throws Exception {
         when(MovebankingestionService.getData(10L))
