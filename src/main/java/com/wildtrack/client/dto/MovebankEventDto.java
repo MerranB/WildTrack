@@ -8,36 +8,36 @@ import java.time.LocalDateTime;
 public class MovebankEventDto {
 
     @CsvIgnore
-    int id;
+    Long id;
     @CsvDate("yyyy-MM-dd HH:mm:ss.SSS")
     @CsvBindByName(column = "timestamp")
     private LocalDateTime timestamp;
     @CsvBindByName(column = "location_lat")
-    private Double location_lat;
+    private Double locationLat;
     @CsvBindByName(column = "location_long")
-    private Double location_long;
+    private Double locationLong;
     @CsvBindByName(column = "individual_id")
-    private String individual_id;
+    private String individualId;
     @CsvBindByName(column = "tag_id")
-    private String tag_id;
+    private String tagId;
 
     public MovebankEventDto (){}
 
 
-    public MovebankEventDto (LocalDateTime timestamp, Double location_lat,
-                             Double location_long, String individual_id, String tag_id) {
+    public MovebankEventDto (LocalDateTime timestamp, Double locationLat,
+                             Double locationLong, String individualId, String tagId) {
         this.timestamp = timestamp;
-        this.location_lat = location_lat;
-        this.location_long = location_long;
-        this.individual_id = individual_id;
-        this.tag_id = tag_id;
+        this.locationLat = locationLat;
+        this.locationLong = locationLong;
+        this.individualId = individualId;
+        this.tagId = tagId;
     }
 
-    public int getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -49,35 +49,35 @@ public class MovebankEventDto {
         this.timestamp = timestamp;
     }
 
-    public Double getLocation_lat() {
-        return location_lat;
+    public Double getLocationLat() {
+        return locationLat;
     }
 
-    public void setLocation_lat(Double location_lat) {
-        this.location_lat = location_lat;
+    public void setLocationLat(Double locationLat) {
+        this.locationLat = locationLat;
     }
 
-    public Double getLocation_long() {
-        return location_long;
+    public Double getLocationLong() {
+        return locationLong;
     }
 
-    public void setLocation_long(Double location_long) {
-        this.location_long = location_long;
+    public void setLocationLong(Double locationLong) {
+        this.locationLong = locationLong;
     }
 
-    public String getIndividual_id() {
-        return individual_id;
+    public String getIndividualId() {
+        return individualId;
     }
 
-    public void setIndividual_id(String individual_id) {
-        this.individual_id = individual_id;
+    public void setIndividualId(String individualId) {
+        this.individualId = individualId;
     }
 
-    public String getTag_id() {
-        return tag_id;
+    public String getTagId() {
+        return tagId;
     }
 
-    public void setTag_id(String tag_id) {
-        this.tag_id = tag_id;
+    public void setTagId(String tagId) {
+        this.tagId = tagId;
     }
 }

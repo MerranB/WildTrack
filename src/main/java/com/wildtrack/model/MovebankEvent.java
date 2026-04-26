@@ -1,18 +1,11 @@
 package com.wildtrack.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "MovebankEvent")
-@Getter
-@Setter
+@Table(name = "movebank_event")
 @NoArgsConstructor
 public class MovebankEvent {
 
@@ -20,32 +13,28 @@ public class MovebankEvent {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank
     @Column(name = "timestamp")
     private LocalDateTime timestamp;
 
     @Column(name = "location_lat")
-    private Double location_lat;
+    private Double locationLat;
 
-    @CreationTimestamp
     @Column(name = "location_long")
-    private Double location_long;
+    private Double locationLong;
 
-    @UpdateTimestamp
     @Column(name = "individual_id")
-    private String individual_id;
+    private String individualId;
 
-    @UpdateTimestamp
     @Column(name = "tag_id")
-    private String tag_id;
+    private String tagId;
 
-    public MovebankEvent(LocalDateTime timestamp, Double location_lat,
-                         Double location_long, String individual_id, String tag_id) {
+    public MovebankEvent(LocalDateTime timestamp, Double locationLat,
+                         Double locationLong, String individualId, String tagId) {
         this.timestamp = timestamp;
-        this.location_lat = location_lat;
-        this.location_long = location_long;
-        this.individual_id = individual_id;
-        this.tag_id = tag_id;
+        this.locationLat = locationLat;
+        this.locationLong = locationLong;
+        this.individualId = individualId;
+        this.tagId = tagId;
         }
 
     public Long getId() {
@@ -64,35 +53,35 @@ public class MovebankEvent {
         this.timestamp = timestamp;
     }
 
-    public Double getLocation_lat() {
-        return location_lat;
+    public Double getLocationLat() {
+        return locationLat;
     }
 
-    public void setLocation_lat(Double location_lat) {
-        this.location_lat = location_lat;
+    public void setLocationLat(Double locationLat) {
+        this.locationLat = locationLat;
     }
 
-    public Double getLocation_long() {
-        return location_long;
+    public Double getLocationLong() {
+        return locationLong;
     }
 
-    public void setLocation_long(Double location_long) {
-        this.location_long = location_long;
+    public void setLocationLong(Double locationLong) {
+        this.locationLong = locationLong;
     }
 
-    public String getIndividual_id() {
-        return individual_id;
+    public String getIndividualId() {
+        return individualId;
     }
 
-    public void setIndividual_id(String individual_id) {
-        this.individual_id = individual_id;
+    public void setIndividualId(String individualId) {
+        this.individualId = individualId;
     }
 
-    public String getTag_id() {
-        return tag_id;
+    public String getTagId() {
+        return tagId;
     }
 
-    public void setTag_id(String tag_id) {
-        this.tag_id = tag_id;
+    public void setTagId(String tagId) {
+        this.tagId = tagId;
     }
 }

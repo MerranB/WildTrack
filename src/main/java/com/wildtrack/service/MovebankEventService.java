@@ -18,19 +18,31 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class MovebankIngestionService {
+public class MovebankEventService {
 
     private final MovebankClient Movebankclient;
     private final MovebankEventRepository movebankEventRepository;
     private final MovebankEventMapper movebankEventMapper;
 
-    public List<MovebankEventDto>  getData(Long id) throws IOException {
+    @Transactional
+    public String updateDatabase(Long id) throws IOException {
 
-        return new CsvToBeanBuilder<MovebankEventDto>(Reader.of(Movebankclient.getData(id)))
+        List<MovebankEventDto> data  = new CsvToBeanBuilder<MovebankEventDto>(Reader.of(Movebankclient.getData(id)))
                         .withIgnoreEmptyLine(true)
                         .withType(MovebankEventDto.class)
                         .build()
                         .parse();
+
+        for(MovebankEventDto dataPoint: data){
+            if (!movebankEventRepository.existsByTimestampAndLocationLatAndLocationLongAndIndividualIdAndTagId
+                    (dataPoint.getTimestamp(), dataPoint.getLocationLat(),
+            dataPoint.getLocationLong(), dataPoint.getIndividualId(), dataPoint.getTagId())){
+                movebankEventRepository.save( movebankEventMapper.toEntity(dataPoint));
+            }
+        }
+
+
+        return "Database Updated Successfully!";
     }
 
     public Page<MovebankEventDto> findAll(Pageable pageable) {
