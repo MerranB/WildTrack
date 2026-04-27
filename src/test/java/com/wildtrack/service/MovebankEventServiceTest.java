@@ -65,7 +65,7 @@ public class MovebankEventServiceTest {
         verify(movebankEventMapper).toEntity(captor.capture());
         MovebankEventDto parsed = captor.getValue();
 
-        assertThat(msg).contains("Database Updated Successfully!");
+        assertThat(msg).contains("FULL_SUCCESS");
         assertThat(parsed.getTimestamp()).isEqualTo(LocalDateTime.of(2011,1,11,1,1,11, 111000000));
         assertThat(parsed.getLocationLat()).isEqualTo(11.1111d);
         assertThat(parsed.getLocationLong()).isEqualTo(-11.1111d);
@@ -81,7 +81,7 @@ public class MovebankEventServiceTest {
         String msg = movebankEventService.updateDatabase(20L);
 
         verify(movebankEventMapper, never()).toEntity(any());
-        assertThat(msg).contains("Database Updated Successfully!");
+        assertThat(msg).contains("FULL_SUCCESS");
     }
     @Test
     void updateDatabase_withMissingField() throws IOException {
@@ -95,7 +95,7 @@ public class MovebankEventServiceTest {
         verify(movebankEventMapper).toEntity(captor.capture());
         MovebankEventDto parsed = captor.getValue();
 
-        assertThat(msg).contains("Database Updated Successfully!");
+        assertThat(msg).contains("FULL_SUCCESS");
         assertThat(parsed.getTimestamp()).isEqualTo(LocalDateTime.of(2022,2,22,2,2,22, 222000000));
         assertThat(parsed.getLocationLat()).isEqualTo(null);
         assertThat(parsed.getLocationLong()).isEqualTo(-22.2222d);
@@ -162,6 +162,82 @@ public class MovebankEventServiceTest {
         when(movebankEventRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () -> movebankEventService.findById(99L));
+    }
+
+    @Test
+    void updateDatabase_oneRecordFails_othersStillSave() throws IOException {
+        when(Movebankclient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
+        when(movebankEventRepository.existsByTimestampAndLocationLatAndLocationLongAndIndividualIdAndTagId(
+                any(), any(), any(), any(), any())).thenReturn(false);
+        when(movebankEventMapper.toEntity(any()))
+                .thenThrow(new RuntimeException("Simulated failure"))
+                .thenReturn(new MovebankEvent(
+                        LocalDateTime.of(2012,1,21,2,1,21,212000000),
+                        12.1212d, -12.1212d, "12121212", "121212121"
+                ));
+
+        movebankEventService.updateDatabase(40L);
+
+        verify(movebankEventRepository, times(5)).save(any(MovebankEvent.class));
+    }
+
+    @Test
+    void updateDatabase_oneRecordFails_returnsPartialSuccess() throws IOException {
+        when(Movebankclient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
+        when(movebankEventRepository.existsByTimestampAndLocationLatAndLocationLongAndIndividualIdAndTagId(
+                any(), any(), any(), any(), any())).thenReturn(false);
+        when(movebankEventMapper.toEntity(any()))
+                .thenThrow(new RuntimeException("Simulated failure"))
+                .thenReturn(new MovebankEvent(
+                        LocalDateTime.of(2012,1,21,2,1,21,212000000),
+                        12.1212d, -12.1212d, "12121212", "121212121"
+                ));
+
+        String result = movebankEventService.updateDatabase(40L);
+
+        assertThat(result).isEqualTo("PARTIAL_SUCCESS");
+    }
+    @Test
+    void updateDatabase_over20PercentFail_returnsFailure() throws IOException {
+        when(Movebankclient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
+        when(movebankEventRepository.existsByTimestampAndLocationLatAndLocationLongAndIndividualIdAndTagId(
+                any(), any(), any(), any(), any())).thenReturn(false);
+
+        when(movebankEventMapper.toEntity(any()))
+                .thenThrow(new RuntimeException("Simulated failure"))
+                .thenThrow(new RuntimeException("Simulated failure"))
+                .thenReturn(new MovebankEvent(
+                        LocalDateTime.of(2012,1,21,2,1,21,212000000),
+                        12.1212d, -12.1212d, "12121212", "121212121"
+                ));
+
+        String result = movebankEventService.updateDatabase(40L);
+
+        assertThat(result).isEqualTo("FAILURE");
+    }
+
+    @Test
+    void updateDatabase_allRecordsFail_returnsFailure() throws IOException {
+        when(Movebankclient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
+        when(movebankEventRepository.existsByTimestampAndLocationLatAndLocationLongAndIndividualIdAndTagId(
+                any(), any(), any(), any(), any())).thenReturn(false);
+        when(movebankEventMapper.toEntity(any()))
+                .thenThrow(new RuntimeException("Simulated failure"));
+
+        String result = movebankEventService.updateDatabase(40L);
+
+        assertThat(result).isEqualTo("FAILURE");
+    }
+
+    @Test
+    void updateDatabase_duplicateRecords_areSkipped() throws IOException {
+        when(Movebankclient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
+        when(movebankEventRepository.existsByTimestampAndLocationLatAndLocationLongAndIndividualIdAndTagId(
+                any(), any(), any(), any(), any())).thenReturn(true);
+
+        movebankEventService.updateDatabase(40L);
+
+        verify(movebankEventRepository, never()).save(any(MovebankEvent.class));
     }
 
    String loadCsvAsString(String filename){

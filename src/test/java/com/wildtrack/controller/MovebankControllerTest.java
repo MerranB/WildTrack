@@ -66,10 +66,10 @@ class MovebankControllerTest {
     void updateDatabase_returns_ok() throws Exception {
 
         when(movebankService.updateDatabase(30L))
-                .thenReturn("Database Updated Successfully!");
+                .thenReturn("FULL_SUCCESS");
         mockMvc.perform(post("/api/v1/events/updateDatabase/30"))
                 .andExpect(status().isOk())
-                .andExpect(content().string("Database Updated Successfully!"));
+                .andExpect(content().string("FULL_SUCCESS"));
     }
 
     @Test

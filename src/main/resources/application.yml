@@ -1,11 +1,9 @@
 spring:
   application:
     name: wildtrack
-
-movebank:
-  username: ${MOVEBANK_USERNAME}
-  password: ${MOVEBANK_PASSWORD}
-
+  datasource:
+    hikari:
+      maximum-pool-size: 20
   jpa:
     hibernate:
       ddl-auto: validate
@@ -23,6 +21,10 @@ movebank:
   threads:
     virtual:
       enabled: true
+
+movebank:
+  username: ${MOVEBANK_USERNAME}
+  password: ${MOVEBANK_PASSWORD}
 
 server:
   port: 8080
