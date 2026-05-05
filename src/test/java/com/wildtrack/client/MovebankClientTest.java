@@ -1,66 +1,59 @@
 package com.wildtrack.client;
 
+import com.wildtrack.exception.MovebankApiException;
+import com.wildtrack.exception.MovebankRateLimitException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
-import java.net.CookieManager;
-import java.net.http.HttpClient;
-import java.net.http.HttpResponse;
-
+import org.springframework.http.MediaType;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestTemplate;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
-@ExtendWith(MockitoExtension.class)
- class MovebankClientTest {
+class MovebankClientTest {
 
-    @InjectMocks
-    MovebankClient Movebankclient;
-
-    @Mock
-    HttpResponse<Object> mockResponse;
-
-    @Mock
-    HttpClient client;
-
-    @Mock
-    CookieManager cookieManager;
+    private MockRestServiceServer server;
+    private MovebankClient movebankClient;
 
     @BeforeEach
-    void setup(){
-        ReflectionTestUtils.setField(Movebankclient, "MBUS", "X");
-        ReflectionTestUtils.setField(Movebankclient, "MBPW", "Y");
+    void setup() {
+        RestTemplate restTemplate = new RestTemplate();
+        server = MockRestServiceServer.createServer(restTemplate);
+        RestClient restClient = RestClient.create(restTemplate);
+        movebankClient = new MovebankClient(restClient);
     }
 
     @Test
-    void Movebank_getData() throws Exception {
-        when(mockResponse.statusCode()).thenReturn(200);
-        when(mockResponse.body()).thenReturn("timestamp");
-        when(client.send(any(), any())).thenReturn(mockResponse);
-
-        assertThat(Movebankclient.getData(10L)).contains("timestamp");
+    void getData_success() {
+        server.expect(requestTo(containsString("study_id=10")))
+                .andRespond(withSuccess("timestamp", MediaType.TEXT_PLAIN));
+        assertThat(movebankClient.getData(10L)).contains("timestamp");
     }
 
     @Test
-    void Movebank_getData_fail() throws Exception {
-        when(mockResponse.statusCode()).thenReturn(500);
-        when(mockResponse.body()).thenReturn(null);
+    void getData_fail() throws Exception {
+        server.expect(requestTo(containsString("study_id=10")))
+                .andRespond(withServerError());
 
-        when(client.send(any(), any())).thenReturn(mockResponse);
-        assertThrows(RuntimeException.class, () -> Movebankclient.getData(10L));
+        assertThrows(MovebankApiException.class, () -> movebankClient.getData(10L));
     }
 
     @Test
-    void Movebank_getData_invalid_ID() throws Exception {
-        when(mockResponse.statusCode()).thenReturn(500);
-        when(mockResponse.body()).thenReturn(null);
+    void getData_rateLimited_throwsMovebankRateLimitException() {
+        server.expect(requestTo(containsString("study_id=10")))
+                .andRespond(withServerError()
+                        .body("rate limiting")
+                        .contentType(MediaType.TEXT_PLAIN));
 
-        when(client.send(any(), any())).thenReturn(mockResponse);
-        assertThrows(RuntimeException.class, () -> Movebankclient.getData(15L));
+        assertThrows(MovebankRateLimitException.class, () -> movebankClient.getData(10L));
+    }
+
+    @Test
+    void getData_invalid_ID() throws Exception {
+        assertThrows(IllegalArgumentException.class, () -> movebankClient.getData(null));
     }
 }

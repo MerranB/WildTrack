@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +42,13 @@ public class MovebankEventService {
                 .build()
                 .parse();
 
+        for(int i = 0; i < data.size(); i ++){
+            List<String> nulls =  checkForNulls(data.get(i));
+            if(!nulls.isEmpty()){
+                log.warn("Data Point {} is missing fields: {}", i, String.join(", ", nulls));
+            }
+        }
+
         return  processBatches(data).toString();
     }
 
@@ -55,48 +64,49 @@ public class MovebankEventService {
     }
 
     private Result processBatches(List<MovebankEventDto> data){
-        // Creates a list to see if threads fail and why.
         List<String> failedThreads = Collections.synchronizedList(new ArrayList<>());
-
-        // This splits up the data into 20 batches (And if the total is less than 20, then the batch is that.)
         int batchSize = (data.size() < BATCH_COUNT) ? data.size() : (data.size() / BATCH_COUNT);
+        AtomicInteger saved = new AtomicInteger();
+        AtomicInteger dups = new AtomicInteger();
 
-        // Start of thread
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 
-            // Set up the threads to run in batched.  All the batches run at once but, in the batch
-            // ,it runs one check at a time
             for (int i = 0; i < data.size(); i += batchSize) {
-                int finalI = i;
+                int i_in_loop = i;
                 executor.submit(() -> {
-                        // Creates a sub list of the data for each batch.
-                        List<MovebankEventDto> batch = data.subList(finalI, Math.min(finalI + batchSize, data.size()));
+                    List<MovebankEventDto> batch = data.subList(i_in_loop, Math.min(i_in_loop + batchSize, data.size()));
 
-                        // This is the meat of the code. It first checks if the data already exists in the database
-                        // that is the existsBy (That really long method name.).  Then, if it is unique, it will put
-                        // it in the database, else it will skip it.
-                        for (MovebankEventDto dataPoint : batch) {
-                            // The try catch is to track what threads are failing, and what the error message is.
-                            try {
+                    for (MovebankEventDto dataPoint : batch) {
+                        try {
 
                             if (!movebankEventRepository.existsByTimestampAndLocationLatAndLocationLongAndIndividualIdAndTagId
                                     (dataPoint.getTimestamp(), dataPoint.getLocationLat(),
-                                     dataPoint.getLocationLong(), dataPoint.getIndividualId(), dataPoint.getTagId()))
+                                            dataPoint.getLocationLong(), dataPoint.getIndividualId(), dataPoint.getTagId()))
                             {
                                 movebankEventRepository.save(movebankEventMapper.toEntity(dataPoint));
+                                saved.getAndIncrement();
                             }
-                            }
-                            // TODO: Add error classification — transient errors (DB down) should abort remaining batches,
-                            // persistent errors should be logged for investigation. Consider dead letter queue in AWS.
-                            catch(Exception e){
-                                failedThreads.add(e.toString());
+                            else{
+                                dups.getAndIncrement();
                             }
                         }
+                        // TODO: Add error classification — transient errors (DB down) should abort remaining batches,
+                        // persistent errors should be logged for investigation. Consider dead letter queue in AWS.
+                        catch(Exception e){
+                            failedThreads.add(e.toString());
+                        }
+                    }
                 });
             }
         }
-        // So cause of threads, if I put this earlier, it will get lost in the console, so I need to put it outside
-        //  the threads.  This will tell me if something went wrong.
+        catch(RejectedExecutionException e){
+            log.error("Executor rejected task submission: {}",  e.getMessage());
+            throw e;
+        }
+
+        log.info("Ingestion complete: {} records parsed, {} saved, {} skipped as duplicates, and {} failed",
+                data.size(),saved, dups, failedThreads.size());
+
         if(!failedThreads.isEmpty()){
             // TODO: Configure Logback file appender to write ERROR logs to a rolling file —
             // console output will truncate at high failure volumes (2000+ errors at 20% failure rate)
@@ -107,11 +117,33 @@ public class MovebankEventService {
         if(failedThreads.isEmpty()){
             return Result.FULL_SUCCESS;
         }
+        // 80% success threshold — if more than 20% of records fail, it likely indicates
+        // a systemic issue (e.g. DB connectivity) rather than isolated record failures.
         else if(((double) (data.size() - failedThreads.size()) / data.size() >= .8)){
             return Result.PARTIAL_SUCCESS;
         }
         else{
             return Result.FAILURE;
         }
+    }
+
+    private List<String> checkForNulls(MovebankEventDto dataPoint){
+        List<String> nullVariables = new ArrayList<>();
+        if(dataPoint.getTimestamp() == null){
+            nullVariables.add("timestamp");
+        }
+        if(dataPoint.getLocationLat() == null){
+            nullVariables.add("location_lat");
+        }
+        if(dataPoint.getLocationLong() == null){
+            nullVariables.add("location_long");
+        }
+        if(dataPoint.getIndividualId() == null){
+            nullVariables.add("individual_id");
+        }
+        if(dataPoint.getTagId() == null){
+            nullVariables.add("tag_id");
+        }
+        return nullVariables;
     }
 }

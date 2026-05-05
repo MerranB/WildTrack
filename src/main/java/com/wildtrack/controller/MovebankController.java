@@ -3,6 +3,7 @@ package com.wildtrack.controller;
 import com.wildtrack.client.dto.MovebankEventDto;
 import com.wildtrack.service.MovebankEventService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
@@ -23,8 +24,17 @@ public class MovebankController {
     }
 
     @PostMapping("/updateDatabase/{id}")
-    public String updateDatabase(@PathVariable Long id) throws IOException {
-        return movebankEventService.updateDatabase(id);
+    public ResponseEntity<String> updateDatabase(@PathVariable Long id) throws IOException {
+        String result = movebankEventService.updateDatabase(id);
+        if(result.equals("FULL_SUCCESS")) {
+            return ResponseEntity.ok(result);
+        }
+        else if(result.equals("PARTIAL_SUCCESS")) {
+            return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(result);
+        }
+        else{
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+        }
     }
 
     @GetMapping("/{id}")

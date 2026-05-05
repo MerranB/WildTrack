@@ -63,8 +63,15 @@ class MovebankControllerTest {
     }
 
     @Test
-    void updateDatabase_returns_ok() throws Exception {
+    void updateDatabase_returns_non200() throws Exception {
+        when(movebankService.updateDatabase(10L))
+                .thenThrow(new RuntimeException(String.valueOf(500)));
+        mockMvc.perform(post("/api/v1/events/updateDatabase/10"))
+                .andExpect(status().isInternalServerError());
+    }
 
+    @Test
+    void updateDatabase_full_success() throws Exception {
         when(movebankService.updateDatabase(30L))
                 .thenReturn("FULL_SUCCESS");
         mockMvc.perform(post("/api/v1/events/updateDatabase/30"))
@@ -73,10 +80,20 @@ class MovebankControllerTest {
     }
 
     @Test
-    void updateDatabase_returns_non200() throws Exception {
+    void updateDatabase_partial_success() throws Exception {
         when(movebankService.updateDatabase(10L))
-                .thenThrow(new RuntimeException(String.valueOf(500)));
+                .thenReturn("PARTIAL_SUCCESS");
         mockMvc.perform(post("/api/v1/events/updateDatabase/10"))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isMultiStatus())
+                .andExpect(content().string("PARTIAL_SUCCESS"));
+    }
+
+    @Test
+    void updateDatabase_failure() throws Exception {
+        when(movebankService.updateDatabase(10L))
+                .thenReturn("FAILURE");
+        mockMvc.perform(post("/api/v1/events/updateDatabase/10"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().string("FAILURE"));
     }
 }
