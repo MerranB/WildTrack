@@ -1,11 +1,17 @@
 package com.wildtrack.exception;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -13,11 +19,16 @@ public class GlobalExceptionHandlerTest {
 
     private MockMvc mockMvc;
 
+
     @BeforeEach
     void setup() {
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.afterPropertiesSet();
+
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new TestController())
                 .setControllerAdvice(new GlobalExceptionHandler())
+                .setValidator(validator)
                 .build();
     }
 
@@ -35,6 +46,22 @@ public class GlobalExceptionHandlerTest {
         public void throwMovebankAPIError() {
             throw new MovebankApiException();
         }
+        @PostMapping("/test-validation")
+        public void throwValidation(@Valid @RequestBody ValidationRequest request) {}
+    }
+    static class ValidationRequest {
+        @NotBlank
+        private String name;
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+    }
+
+    @Test
+    void validation_exception_returns400() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.post("/test-validation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -47,9 +74,10 @@ public class GlobalExceptionHandlerTest {
         mockMvc.perform(MockMvcRequestBuilders.get("/movebank-api-limit"))
                 .andExpect(status().isTooManyRequests());
     }
-    @Test
+        @Test
     void movebank_api_error() throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.get("/movebank-error"))
                 .andExpect(status().isBadGateway());
     }
 }
+

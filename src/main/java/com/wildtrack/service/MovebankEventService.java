@@ -18,7 +18,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Executors;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
@@ -35,7 +34,6 @@ public class MovebankEventService {
     @Transactional
     public String updateDatabase(Long id) {
 
-        // This calls another method() that pulls in data from a website. This parses the CSV into basically POJO.
         List<MovebankEventDto> data = new CsvToBeanBuilder<MovebankEventDto>(Reader.of(movebankclient.getData(id)))
                 .withIgnoreEmptyLine(true)
                 .withType(MovebankEventDto.class)
@@ -45,8 +43,9 @@ public class MovebankEventService {
         for(int i = 0; i < data.size(); i ++){
             List<String> nulls =  checkForNulls(data.get(i));
             if(!nulls.isEmpty()){
-                log.warn("Data Point {} is missing fields: {}", i, String.join(", ", nulls));
+                log.warn("Data Point {} is missing fields: {}", i, nulls);
             }
+
         }
 
         return  processBatches(data).toString();
@@ -69,47 +68,20 @@ public class MovebankEventService {
         AtomicInteger saved = new AtomicInteger();
         AtomicInteger dups = new AtomicInteger();
 
-        try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+        try(var executor = Executors.newVirtualThreadPerTaskExecutor()) {
 
             for (int i = 0; i < data.size(); i += batchSize) {
-                int i_in_loop = i;
+                int batchStart = i;
                 executor.submit(() -> {
-                    List<MovebankEventDto> batch = data.subList(i_in_loop, Math.min(i_in_loop + batchSize, data.size()));
-
-                    for (MovebankEventDto dataPoint : batch) {
-                        try {
-
-                            if (!movebankEventRepository.existsByTimestampAndLocationLatAndLocationLongAndIndividualIdAndTagId
-                                    (dataPoint.getTimestamp(), dataPoint.getLocationLat(),
-                                            dataPoint.getLocationLong(), dataPoint.getIndividualId(), dataPoint.getTagId()))
-                            {
-                                movebankEventRepository.save(movebankEventMapper.toEntity(dataPoint));
-                                saved.getAndIncrement();
-                            }
-                            else{
-                                dups.getAndIncrement();
-                            }
-                        }
-                        // TODO: Add error classification — transient errors (DB down) should abort remaining batches,
-                        // persistent errors should be logged for investigation. Consider dead letter queue in AWS.
-                        catch(Exception e){
-                            failedThreads.add(e.toString());
-                        }
-                    }
+                    List<MovebankEventDto> batch = data.subList(batchStart, Math.min(batchStart + batchSize, data.size()));
+                    processBatch(batch, saved, dups, failedThreads);
                 });
             }
         }
-        catch(RejectedExecutionException e){
-            log.error("Executor rejected task submission: {}",  e.getMessage());
-            throw e;
-        }
-
         log.info("Ingestion complete: {} records parsed, {} saved, {} skipped as duplicates, and {} failed",
                 data.size(),saved, dups, failedThreads.size());
 
         if(!failedThreads.isEmpty()){
-            // TODO: Configure Logback file appender to write ERROR logs to a rolling file —
-            // console output will truncate at high failure volumes (2000+ errors at 20% failure rate)
             log.error("{} threads failed to run!", failedThreads.size());
             failedThreads.forEach(log::error);
         }
@@ -127,6 +99,28 @@ public class MovebankEventService {
         }
     }
 
+    private void processBatch(List<MovebankEventDto> batch,AtomicInteger saved,AtomicInteger dups,  List<String> failedThreads){
+
+        for (MovebankEventDto dataPoint : batch) {
+            try {
+
+                if (!movebankEventRepository.existsByTimestampAndLocationLatAndLocationLongAndIndividualIdAndTagId
+                        (dataPoint.getTimestamp(), dataPoint.getLocationLat(),
+                                dataPoint.getLocationLong(), dataPoint.getIndividualId(), dataPoint.getTagId()))
+                {
+                    movebankEventRepository.save(movebankEventMapper.toEntity(dataPoint));
+                    saved.getAndIncrement();
+                }
+                else{
+                    dups.getAndIncrement();
+                }
+            }
+            catch(Exception e){
+                failedThreads.add(e.toString());
+            }
+        }
+    }
+
     private List<String> checkForNulls(MovebankEventDto dataPoint){
         List<String> nullVariables = new ArrayList<>();
         if(dataPoint.getTimestamp() == null){
@@ -138,10 +132,10 @@ public class MovebankEventService {
         if(dataPoint.getLocationLong() == null){
             nullVariables.add("location_long");
         }
-        if(dataPoint.getIndividualId() == null){
+        if(dataPoint.getIndividualId() == null || dataPoint.getIndividualId().isBlank()){
             nullVariables.add("individual_id");
         }
-        if(dataPoint.getTagId() == null){
+        if(dataPoint.getTagId() == null  || dataPoint.getTagId().isBlank()){
             nullVariables.add("tag_id");
         }
         return nullVariables;

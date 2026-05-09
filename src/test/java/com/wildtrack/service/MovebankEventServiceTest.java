@@ -92,15 +92,20 @@ public class MovebankEventServiceTest {
         ArgumentCaptor<MovebankEventDto> captor = ArgumentCaptor.forClass(MovebankEventDto.class);
         String msg = movebankEventService.updateDatabase(30L);
 
-        verify(movebankEventMapper).toEntity(captor.capture());
-        MovebankEventDto parsed = captor.getValue();
+        verify(movebankEventMapper, times(5)).toEntity(captor.capture());
+        List<MovebankEventDto>  allParsed = captor.getAllValues();
+
+        MovebankEventDto nullLatRecord = allParsed.stream()
+                .filter(dto -> dto.getLocationLat() == null)
+                .findFirst()
+                .orElseThrow();
 
         assertThat(msg).contains("FULL_SUCCESS");
-        assertThat(parsed.getTimestamp()).isEqualTo(LocalDateTime.of(2022,2,22,2,2,22, 222000000));
-        assertThat(parsed.getLocationLat()).isEqualTo(null);
-        assertThat(parsed.getLocationLong()).isEqualTo(-22.2222d);
-        assertThat(parsed.getIndividualId()).isEqualTo("22222222");
-        assertThat(parsed.getTagId()).isEqualTo("222222222");
+        assertThat(nullLatRecord.getTimestamp()).isEqualTo(LocalDateTime.of(2022,2,22,2,2,22, 222000000));
+        assertThat(nullLatRecord.getLocationLat()).isEqualTo(null);
+        assertThat(nullLatRecord.getLocationLong()).isEqualTo(-22.2222d);
+        assertThat(nullLatRecord.getIndividualId()).isEqualTo("22222222");
+        assertThat(nullLatRecord.getTagId()).isEqualTo("222222222");
     }
 
     @Test
@@ -178,7 +183,7 @@ public class MovebankEventServiceTest {
 
         movebankEventService.updateDatabase(40L);
 
-        verify(movebankEventRepository, times(5)).save(any(MovebankEvent.class));
+        verify(movebankEventRepository, times(23)).save(any(MovebankEvent.class));
     }
 
     @Test
@@ -204,6 +209,10 @@ public class MovebankEventServiceTest {
                 any(), any(), any(), any(), any())).thenReturn(false);
 
         when(movebankEventMapper.toEntity(any()))
+                .thenThrow(new RuntimeException("Simulated failure"))
+                .thenThrow(new RuntimeException("Simulated failure"))
+                .thenThrow(new RuntimeException("Simulated failure"))
+                .thenThrow(new RuntimeException("Simulated failure"))
                 .thenThrow(new RuntimeException("Simulated failure"))
                 .thenThrow(new RuntimeException("Simulated failure"))
                 .thenReturn(new MovebankEvent(

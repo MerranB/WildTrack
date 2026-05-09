@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import java.io.IOException;
 
 @RestController
 @RequestMapping("/api/v1/events")
@@ -24,7 +23,7 @@ public class MovebankController {
     }
 
     @PostMapping("/updateDatabase/{id}")
-    public ResponseEntity<String> updateDatabase(@PathVariable Long id) throws IOException {
+    public ResponseEntity<String> updateDatabase(@PathVariable Long id) {
         String result = movebankEventService.updateDatabase(id);
         if(result.equals("FULL_SUCCESS")) {
             return ResponseEntity.ok(result);

@@ -70,8 +70,9 @@ class MovebankControllerTest {
                 .andExpect(status().isInternalServerError());
     }
 
-    @Test
+        @Test
     void updateDatabase_full_success() throws Exception {
+
         when(movebankService.updateDatabase(30L))
                 .thenReturn("FULL_SUCCESS");
         mockMvc.perform(post("/api/v1/events/updateDatabase/30"))
