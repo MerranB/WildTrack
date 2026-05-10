@@ -2,7 +2,6 @@ package com.wildtrack.controller;
 
 import com.wildtrack.client.dto.MovebankEventDto;
 import com.wildtrack.exception.ResourceNotFoundException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wildtrack.service.MovebankEventService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,9 +23,6 @@ class MovebankControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @MockitoBean
     private MovebankEventService movebankService;

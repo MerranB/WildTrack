@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class GlobalExceptionHandlerTest {
+class GlobalExceptionHandlerTest {
 
     private MockMvc mockMvc;
 
@@ -46,7 +46,7 @@ public class GlobalExceptionHandlerTest {
         public void throwMovebankAPIError() {
             throw new MovebankApiException();
         }
-        @PostMapping("/test-validation")
+        @PostMapping("/bad-request")
         public void throwValidation(@Valid @RequestBody ValidationRequest request) {}
     }
     static class ValidationRequest {
@@ -58,7 +58,7 @@ public class GlobalExceptionHandlerTest {
 
     @Test
     void validation_exception_returns400() throws Exception {
-        mockMvc.perform(MockMvcRequestBuilders.post("/test-validation")
+        mockMvc.perform(MockMvcRequestBuilders.post("/bad-request")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
