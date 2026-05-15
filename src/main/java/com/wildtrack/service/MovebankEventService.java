@@ -51,6 +51,16 @@ public class MovebankEventService {
         return  processBatches(data).toString();
     }
 
+    public Page<MovebankEventDto> allDataPointsByRange(double lat, double lon, double range, Pageable pageable){
+        return movebankEventRepository.allDataPointsByRange(lat, lon, range, pageable)
+        .map(movebankEventMapper::toDto);
+    }
+
+    public Page<MovebankEventDto> allDataPointsByBox(double minLon, double minLat, double maxLon, double maxLat, Pageable pageable){
+        return movebankEventRepository.allDataPointsByBox(minLon, minLat, maxLon, maxLat, pageable)
+        .map(movebankEventMapper::toDto);
+    }
+
     public Page<MovebankEventDto> findAll(Pageable pageable) {
         return movebankEventRepository.findAll(pageable)
                 .map(movebankEventMapper::toDto);

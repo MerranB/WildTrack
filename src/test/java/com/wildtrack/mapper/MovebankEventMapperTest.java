@@ -22,23 +22,23 @@ class MovebankEventMapperTest {
 
         MovebankEventMapper mapper = Mappers.getMapper(MovebankEventMapper.class);
 
-        MovebankEventDto dto = new MovebankEventDto(
-                LocalDateTime.of(2011,1,11,1,1,11,111000000),
-                11.1111d,
-                -11.1111d,
-                "11111111",
-                "111111111"
-        );
+            MovebankEventDto dto = new MovebankEventDto(
+                    LocalDateTime.of(2011,1,11,1,1,11,111000000),
+                    11.1111d,
+                    -11.1111d,
+                    "11111111",
+                    "111111111"
+            );
 
-        MovebankEvent entity = mapper.toEntity(dto);
+            MovebankEvent entity = mapper.toEntity(dto);
 
-        assertThat(entity.getId()).isNull();
-        assertThat(entity.getTimestamp()).isEqualTo(dto.getTimestamp());
-        assertThat(entity.getLocation().getY()).isEqualTo(dto.getLocationLat());
-        assertThat(entity.getLocation().getX()).isEqualTo(dto.getLocationLong());
-        assertThat(entity.getIndividualId()).isEqualTo(dto.getIndividualId());
-        assertThat(entity.getTagId()).isEqualTo(dto.getTagId());
-    }
+            assertThat(entity.getId()).isNull();
+            assertThat(entity.getTimestamp()).isEqualTo(dto.getTimestamp());
+            assertThat(entity.getLocation().getY()).isEqualTo(dto.getLocationLat());
+            assertThat(entity.getLocation().getX()).isEqualTo(dto.getLocationLong());
+            assertThat(entity.getIndividualId()).isEqualTo(dto.getIndividualId());
+            assertThat(entity.getTagId()).isEqualTo(dto.getTagId());
+        }
 
     @Test
     void toDto_mapsAllFieldsCorrectly(){
@@ -62,5 +62,32 @@ class MovebankEventMapperTest {
         assertThat(dto.getLocationLong()).isEqualTo(event.getLocation().getX());
         assertThat(dto.getIndividualId()).isEqualTo(event.getIndividualId());
         assertThat(dto.getTagId()).isEqualTo(event.getTagId());
+    }
+    @Test
+    void pointToLat_returnsNull_whenPointIsNull() {
+        MovebankEventMapper mapper = Mappers.getMapper(MovebankEventMapper.class);
+
+        assertThat(mapper.pointToLat(null)).isNull();
+    }
+
+    @Test
+    void pointToLong_returnsNull_whenPointIsNull() {
+        MovebankEventMapper mapper = Mappers.getMapper(MovebankEventMapper.class);
+
+        assertThat(mapper.pointToLong(null)).isNull();
+    }
+
+    @Test
+    void toPoint_returnsNull_whenLatIsNull() {
+        MovebankEventMapper mapper = Mappers.getMapper(MovebankEventMapper.class);
+
+        assertThat(mapper.toPoint(null, -11.1111d)).isNull();
+    }
+
+    @Test
+    void toPoint_returnsNull_whenLonIsNull() {
+        MovebankEventMapper mapper = Mappers.getMapper(MovebankEventMapper.class);
+
+        assertThat(mapper.toPoint(11.1111d, null)).isNull();
     }
 }

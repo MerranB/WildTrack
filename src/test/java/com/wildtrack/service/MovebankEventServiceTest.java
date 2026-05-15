@@ -40,7 +40,7 @@ class MovebankEventServiceTest {
 
     private static final Logger log = LoggerFactory.getLogger(MovebankEventServiceTest.class);
     @Mock
-    MovebankClient movebankClient;
+    MovebankClient MovebankClient;
 
     @Mock
     MovebankEventRepository movebankEventRepository;
@@ -60,16 +60,17 @@ class MovebankEventServiceTest {
 
     @Test
     void updateDatabase_fail() {
-        when(movebankClient.getData(0L)).thenThrow(RuntimeException.class);
+        when(MovebankClient.getData(0L)).thenThrow(RuntimeException.class);
         assertThrows(RuntimeException.class, () -> movebankEventService.updateDatabase(0L));
     }
     @Test
-    void updateDatabase_parsesCorrectData(){
-        when(movebankClient.getData(10L)).thenReturn(loadCsvAsString("CorrectCSV.csv"));
-        Point point = new GeometryFactory(new PrecisionModel(), 4326)
-                .createPoint(new Coordinate(-22.2222, 22.2222));
-        MovebankEvent entity = new MovebankEvent(LocalDateTime.now(), point, "22222222", "222222222");
-        when(movebankEventMapper.toEntity(any())).thenReturn(entity);
+    void updateDatabase_parsesCorrectData() {
+        when(MovebankClient.getData(10L)).thenReturn(loadCsvAsString("CorrectCSV.csv"));
+        Point location = geometryFactory.createPoint(new Coordinate(12.1212d,-12.1212d));
+        when(movebankEventMapper.toEntity(any())).thenReturn(new MovebankEvent(
+                LocalDateTime.of(2011,1,11,1,1,11,111000000),
+                location,  "11111111", "111111111"
+        ));
         when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
                 any(), any(), any(), any())).thenReturn(false);
         ArgumentCaptor<MovebankEventDto> captor = ArgumentCaptor.forClass(MovebankEventDto.class);
@@ -88,9 +89,9 @@ class MovebankEventServiceTest {
 
     }
     @Test
-    void updateDatabase_withHeaderOnlyCSV(){
+    void updateDatabase_withHeaderOnlyCSV() {
 
-        when(movebankClient.getData(20L)).thenReturn(loadCsvAsString("HeadersOnly.csv"));
+        when(MovebankClient.getData(20L)).thenReturn(loadCsvAsString("HeadersOnly.csv"));
 
         String msg = movebankEventService.updateDatabase(20L);
 
@@ -98,13 +99,14 @@ class MovebankEventServiceTest {
         assertThat(msg).contains("FULL_SUCCESS");
     }
     @Test
-    void updateDatabase_withMissingField(){
+    void updateDatabase_withMissingField() {
 
-        when(movebankClient.getData(30L)).thenReturn(loadCsvAsString("MissingRows.csv"));
-        Point point = new GeometryFactory(new PrecisionModel(), 4326)
-                .createPoint(new Coordinate(-22.2222, 22.2222));
-        MovebankEvent entity = new MovebankEvent(LocalDateTime.now(), point, "22222222", "222222222");
-        when(movebankEventMapper.toEntity(any())).thenReturn(entity);
+        when(MovebankClient.getData(30L)).thenReturn(loadCsvAsString("MissingRows.csv"));
+        Point location = geometryFactory.createPoint(new Coordinate(12.1212d,-12.1212d));
+        when(movebankEventMapper.toEntity(any())).thenReturn(new MovebankEvent(
+                LocalDateTime.of(2011,1,11,1,1,11,111000000),
+                location,  "11111111", "111111111"
+        ));
         when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
                 any(), any(), any(), any())).thenReturn(false);
         ArgumentCaptor<MovebankEventDto> captor = ArgumentCaptor.forClass(MovebankEventDto.class);
@@ -127,8 +129,8 @@ class MovebankEventServiceTest {
     }
 
     @Test
-    void updateDatabase_savesNewRecord(){
-        when(movebankClient.getData(10L)).thenReturn(loadCsvAsString("CorrectCSV.csv"));
+    void updateDatabase_savesNewRecord() {
+        when(MovebankClient.getData(10L)).thenReturn(loadCsvAsString("CorrectCSV.csv"));
         when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
                 any(), any(), any(), any())).thenReturn(false);
         Point location = geometryFactory.createPoint(new Coordinate(12.1212d,-12.1212d));
@@ -190,8 +192,8 @@ class MovebankEventServiceTest {
     }
 
     @Test
-    void updateDatabase_oneRecordFails_othersStillSave(){
-        when(movebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
+    void updateDatabase_oneRecordFails_othersStillSave() {
+        when(MovebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
         when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
                 any(), any(), any(), any())).thenReturn(false);
         Point location = geometryFactory.createPoint(new Coordinate(12.1212d,-12.1212d));
@@ -208,8 +210,8 @@ class MovebankEventServiceTest {
     }
 
     @Test
-    void updateDatabase_oneRecordFails_returnsPartialSuccess(){
-        when(movebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
+    void updateDatabase_oneRecordFails_returnsPartialSuccess() {
+        when(MovebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
         when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
                 any(), any(), any(), any())).thenReturn(false);
         Point location = geometryFactory.createPoint(new Coordinate(12.1212d,-12.1212d));
@@ -225,8 +227,8 @@ class MovebankEventServiceTest {
         assertThat(result).isEqualTo("PARTIAL_SUCCESS");
     }
     @Test
-    void updateDatabase_over20PercentFail_returnsFailure(){
-        when(movebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
+    void updateDatabase_over20PercentFail_returnsFailure() {
+        when(MovebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
         when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
                 any(), any(), any(), any())).thenReturn(false);
         Point location = geometryFactory.createPoint(new Coordinate(12.1212d,-12.1212d));
@@ -248,8 +250,8 @@ class MovebankEventServiceTest {
     }
 
     @Test
-    void updateDatabase_allRecordsFail_returnsFailure(){
-        when(movebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
+    void updateDatabase_allRecordsFail_returnsFailure() {
+        when(MovebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
         when(movebankEventMapper.toEntity(any()))
                 .thenThrow(new RuntimeException("Simulated failure"));
         String result = movebankEventService.updateDatabase(40L);
@@ -257,12 +259,13 @@ class MovebankEventServiceTest {
     }
 
     @Test
-    void updateDatabase_duplicateRecords_areSkipped(){
-        when(movebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
-        Point point = new GeometryFactory(new PrecisionModel(), 4326)
-                .createPoint(new Coordinate(-22.2222, 22.2222));
-        MovebankEvent entity = new MovebankEvent(LocalDateTime.now(), point, "22222222", "222222222");
-        when(movebankEventMapper.toEntity(any())).thenReturn(entity);
+    void updateDatabase_duplicateRecords_areSkipped() {
+        when(MovebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
+        Point location = geometryFactory.createPoint(new Coordinate(12.1212d,-12.1212d));
+        when(movebankEventMapper.toEntity(any())).thenReturn(new MovebankEvent(
+                LocalDateTime.of(2011,1,11,1,1,11,111000000),
+                location,  "11111111", "111111111"
+        ));
         when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
                 any(), any(), any(), any())).thenReturn(true);
 
@@ -291,5 +294,64 @@ class MovebankEventServiceTest {
             log.error("e: ", e);
         }
         return csvValues;
+    }
+    @Test
+    void allDataPointsByRange_returnsPageOfDtos() {
+        Point location = geometryFactory.createPoint(new Coordinate(12.1212d, -12.1212d));
+        MovebankEvent entity = new MovebankEvent(
+                LocalDateTime.of(2011,1,11,1,1,11,111000000),
+                location, "11111111", "111111111"
+        );
+        when(movebankEventRepository.allDataPointsByRange(anyDouble(), anyDouble(), anyDouble(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(entity)));
+        when(movebankEventMapper.toDto(any())).thenReturn(new MovebankEventDto(
+                LocalDateTime.of(2011,1,11,1,1,11,111000000),
+                11.1111d, -11.1111d, "11111111", "111111111"
+        ));
+
+        Page<MovebankEventDto> result = movebankEventService.allDataPointsByRange(0.0, 0.0, 5.0, Pageable.unpaged());
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().getFirst().getLocationLat()).isEqualTo(11.1111d);
+    }
+
+    @Test
+    void allDataPointsByRange_returnsEmptyPage_whenNoResults() {
+        when(movebankEventRepository.allDataPointsByRange(anyDouble(), anyDouble(), anyDouble(), any(Pageable.class)))
+                .thenReturn(Page.empty());
+
+        Page<MovebankEventDto> result = movebankEventService.allDataPointsByRange(0.0, 0.0, 5.0, Pageable.unpaged());
+
+        assertThat(result.getContent()).isEmpty();
+    }
+
+    @Test
+    void allDataPointsByBox_returnsPageOfDtos() {
+        Point location = geometryFactory.createPoint(new Coordinate(12.1212d, -12.1212d));
+        MovebankEvent entity = new MovebankEvent(
+                LocalDateTime.of(2011,1,11,1,1,11,111000000),
+                location, "11111111", "111111111"
+        );
+        when(movebankEventRepository.allDataPointsByBox(anyDouble(), anyDouble(), anyDouble(), anyDouble(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(entity)));
+        when(movebankEventMapper.toDto(any())).thenReturn(new MovebankEventDto(
+                LocalDateTime.of(2011,1,11,1,1,11,111000000),
+                11.1111d, -11.1111d, "11111111", "111111111"
+        ));
+
+        Page<MovebankEventDto> result = movebankEventService.allDataPointsByBox(-10.0, -10.0, 10.0, 10.0, Pageable.unpaged());
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().getFirst().getLocationLat()).isEqualTo(11.1111d);
+    }
+
+    @Test
+    void allDataPointsByBox_returnsEmptyPage_whenNoResults() {
+        when(movebankEventRepository.allDataPointsByBox(anyDouble(), anyDouble(), anyDouble(), anyDouble(), any(Pageable.class)))
+                .thenReturn(Page.empty());
+
+        Page<MovebankEventDto> result = movebankEventService.allDataPointsByBox(-10.0, -10.0, 10.0, 10.0, Pageable.unpaged());
+
+        assertThat(result.getContent()).isEmpty();
     }
 }

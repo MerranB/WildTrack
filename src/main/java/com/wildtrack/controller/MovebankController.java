@@ -8,6 +8,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import jakarta.validation.Valid;
+import com.wildtrack.dto.BoundingBoxRequest;
+import com.wildtrack.dto.CoordinateRangeRequest;
 
 @RestController
 @RequestMapping("/api/v1/events")
@@ -15,7 +18,6 @@ import org.springframework.data.domain.Pageable;
 public class MovebankController {
 
     private final MovebankEventService movebankEventService;
-
 
     @GetMapping
     public ResponseEntity<Page<MovebankEventDto>> getAll(Pageable pageable) {
@@ -39,5 +41,17 @@ public class MovebankController {
     @GetMapping("/{id}")
     public ResponseEntity<MovebankEventDto> getById(@PathVariable Long id) {
         return ResponseEntity.ok(movebankEventService.findById(id));
+    }
+
+    @GetMapping("/allDataPointsByBox")
+    public ResponseEntity<Page<MovebankEventDto>> allDataPointsByBox(@Valid @ModelAttribute BoundingBoxRequest request,
+        Pageable pageable) {
+        return ResponseEntity.ok(movebankEventService.allDataPointsByBox(request.minLon(), request.minLat(), request.maxLon(), request.maxLat(), pageable));
+    }
+
+    @GetMapping("/allDataPointsByRange")
+    public ResponseEntity<Page<MovebankEventDto>> allDataPointsByRange(@Valid @ModelAttribute CoordinateRangeRequest request,
+        Pageable pageable) {
+        return ResponseEntity.ok(movebankEventService.allDataPointsByRange(request.lat(), request.lon(), request.range(), pageable));
     }
 }

@@ -2,6 +2,7 @@ package com.wildtrack.controller;
 
 import com.wildtrack.client.dto.MovebankEventDto;
 import com.wildtrack.exception.ResourceNotFoundException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wildtrack.service.MovebankEventService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,9 @@ class MovebankControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @MockitoBean
     private MovebankEventService movebankService;
@@ -92,5 +96,66 @@ class MovebankControllerTest {
         mockMvc.perform(post("/api/v1/events/updateDatabase/10"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().string("FAILURE"));
+    }
+    @Test
+    void allDataPointsByBox_returnsOk_withValidParams() throws Exception {
+        Page<MovebankEventDto> page = new PageImpl<>(List.of(
+                new MovebankEventDto(LocalDateTime.of(2011,1,11,1,1,11,111000000), 11.1111, -11.1111, "11111111", "111111111")));
+        when(movebankService.allDataPointsByBox(anyDouble(), anyDouble(), anyDouble(), anyDouble(), any(Pageable.class))).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/events/allDataPointsByBox")
+                        .param("minLon", "-10.0").param("minLat", "-10.0")
+                        .param("maxLon", "10.0").param("maxLat", "10.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void allDataPointsByBox_returnsBadRequest_whenLonOutOfRange() throws Exception {
+        mockMvc.perform(get("/api/v1/events/allDataPointsByBox")
+                        .param("minLon", "181.0").param("minLat", "0.0")
+                        .param("maxLon", "10.0").param("maxLat", "10.0"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void allDataPointsByBox_returnsBadRequest_whenLatOutOfRange() throws Exception {
+        mockMvc.perform(get("/api/v1/events/allDataPointsByBox")
+                        .param("minLon", "0.0").param("minLat", "91.0")
+                        .param("maxLon", "10.0").param("maxLat", "10.0"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void allDataPointsByRange_returnsOk_withValidParams() throws Exception {
+        Page<MovebankEventDto> page = new PageImpl<>(List.of(
+                new MovebankEventDto(LocalDateTime.of(2011,1,11,1,1,11,111000000), 11.1111, -11.1111, "11111111", "111111111")));
+        when(movebankService.allDataPointsByRange(anyDouble(), anyDouble(), anyDouble(), any(Pageable.class))).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/events/allDataPointsByRange")
+                        .param("lon", "0.0").param("lat", "0.0").param("range", "5.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void allDataPointsByRange_returnsBadRequest_whenLonOutOfRange() throws Exception {
+        mockMvc.perform(get("/api/v1/events/allDataPointsByRange")
+                        .param("lon", "181.0").param("lat", "0.0").param("range", "5.0"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void allDataPointsByRange_returnsBadRequest_whenLatOutOfRange() throws Exception {
+        mockMvc.perform(get("/api/v1/events/allDataPointsByRange")
+                        .param("lon", "0.0").param("lat", "91.0").param("range", "5.0"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void allDataPointsByRange_returnsBadRequest_whenRangeOutOfRange() throws Exception {
+        mockMvc.perform(get("/api/v1/events/allDataPointsByRange")
+                        .param("lon", "0.0").param("lat", "0.0").param("range", "11.0"))
+                .andExpect(status().isBadRequest());
     }
 }

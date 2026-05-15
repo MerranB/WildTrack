@@ -46,7 +46,7 @@ class GlobalExceptionHandlerTest {
         public void throwMovebankAPIError() {
             throw new MovebankApiException();
         }
-        @PostMapping("/bad-request")
+        @PostMapping("/test-validation")
         public void throwValidation(@Valid @RequestBody ValidationRequest request) {}
     }
     static class ValidationRequest {
@@ -58,7 +58,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void validation_exception_returns400() throws Exception {
-        mockMvc.perform(MockMvcRequestBuilders.post("/bad-request")
+        mockMvc.perform(MockMvcRequestBuilders.post("/test-validation")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());

@@ -26,11 +26,11 @@ public class UpdateDatabaseScheduler {
 
     @Scheduled(cron = "${scheduler.cronTime}")
     public void updateAllStudies() {
-        List<MovebankStudy> studies = movebankStudyRepository.findAll();
-        for(MovebankStudy study: studies){
-            if(study.getId()!=null) {
-                movebankEventService.updateDatabase(study.getId());
-            }
-        }
+       List<MovebankStudy> studies = movebankStudyRepository.findAll();
+       for(MovebankStudy study: studies){
+           if(study.getId()!=null) {
+               movebankEventService.updateDatabase(study.getId());
+           }
+       }
     }
 }
