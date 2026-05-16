@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.io.IOException;
 import jakarta.validation.Valid;
 import com.wildtrack.dto.BoundingBoxRequest;
 import com.wildtrack.dto.CoordinateRangeRequest;
@@ -25,7 +26,7 @@ public class MovebankController {
     }
 
     @PostMapping("/updateDatabase/{id}")
-    public ResponseEntity<String> updateDatabase(@PathVariable Long id) {
+    public ResponseEntity<String> updateDatabase(@PathVariable Long id) throws IOException {
         String result = movebankEventService.updateDatabase(id);
         if(result.equals("FULL_SUCCESS")) {
             return ResponseEntity.ok(result);

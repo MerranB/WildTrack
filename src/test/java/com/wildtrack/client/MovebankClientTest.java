@@ -35,7 +35,7 @@ class MovebankClientTest {
     }
 
     @Test
-    void getData_fail() {
+    void getData_fail() throws Exception {
         server.expect(requestTo(containsString("study_id=10")))
                 .andRespond(withServerError());
 
@@ -53,7 +53,7 @@ class MovebankClientTest {
     }
 
     @Test
-    void getData_invalid_ID() {
+    void getData_invalid_ID() throws Exception {
         assertThrows(IllegalArgumentException.class, () -> movebankClient.getData(null));
     }
 }

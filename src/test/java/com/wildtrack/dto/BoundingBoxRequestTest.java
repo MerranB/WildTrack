@@ -18,46 +18,46 @@ class BoundingBoxRequestTest {
 
     @Test
     void valid_request_passes_validation() {
-        assertThat(validator.validate(new com.wildtrack.dto.BoundingBoxRequest(-10.0, -10.0, 10.0, 10.0))).isEmpty();
+        assertThat(validator.validate(new BoundingBoxRequest(-10.0, -10.0, 10.0, 10.0))).isEmpty();
     }
 
     @Test
     void minLon_below_minus180_fails_validation() {
-        assertThat(validator.validate(new com.wildtrack.dto.BoundingBoxRequest(-181.0, 0.0, 0.0, 0.0))).isNotEmpty();
+        assertThat(validator.validate(new BoundingBoxRequest(-181.0, 0.0, 0.0, 0.0))).isNotEmpty();
     }
 
     @Test
     void minLon_above_180_fails_validation() {
-        assertThat(validator.validate(new com.wildtrack.dto.BoundingBoxRequest(181.0, 0.0, 0.0, 0.0))).isNotEmpty();
+        assertThat(validator.validate(new BoundingBoxRequest(181.0, 0.0, 0.0, 0.0))).isNotEmpty();
     }
 
     @Test
     void minLat_below_minus90_fails_validation() {
-        assertThat(validator.validate(new com.wildtrack.dto.BoundingBoxRequest(0.0, -91.0, 0.0, 0.0))).isNotEmpty();
+        assertThat(validator.validate(new BoundingBoxRequest(0.0, -91.0, 0.0, 0.0))).isNotEmpty();
     }
 
     @Test
     void minLat_above_90_fails_validation() {
-        assertThat(validator.validate(new com.wildtrack.dto.BoundingBoxRequest(0.0, 91.0, 0.0, 0.0))).isNotEmpty();
+        assertThat(validator.validate(new BoundingBoxRequest(0.0, 91.0, 0.0, 0.0))).isNotEmpty();
     }
 
     @Test
     void maxLon_below_minus180_fails_validation() {
-        assertThat(validator.validate(new com.wildtrack.dto.BoundingBoxRequest(0.0, 0.0, -181.0, 0.0))).isNotEmpty();
+        assertThat(validator.validate(new BoundingBoxRequest(0.0, 0.0, -181.0, 0.0))).isNotEmpty();
     }
 
     @Test
     void maxLon_above_180_fails_validation() {
-        assertThat(validator.validate(new com.wildtrack.dto.BoundingBoxRequest(0.0, 0.0, 181.0, 0.0))).isNotEmpty();
+        assertThat(validator.validate(new BoundingBoxRequest(0.0, 0.0, 181.0, 0.0))).isNotEmpty();
     }
 
     @Test
     void maxLat_below_minus90_fails_validation() {
-        assertThat(validator.validate(new com.wildtrack.dto.BoundingBoxRequest(0.0, 0.0, 0.0, -91.0))).isNotEmpty();
+        assertThat(validator.validate(new BoundingBoxRequest(0.0, 0.0, 0.0, -91.0))).isNotEmpty();
     }
 
     @Test
     void maxLat_above_90_fails_validation() {
-        assertThat(validator.validate(new com.wildtrack.dto.BoundingBoxRequest(0.0, 0.0, 0.0, 91.0))).isNotEmpty();
+        assertThat(validator.validate(new BoundingBoxRequest(0.0, 0.0, 0.0, 91.0))).isNotEmpty();
     }
 }
