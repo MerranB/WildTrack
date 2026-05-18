@@ -11,7 +11,17 @@ spring:
     properties:
       hibernate:
         format_sql: true
-
+  mail:
+    host: ${EMAIL_HOST}
+    port: ${EMAIL_PORT}
+    username: ${EMAIL_USERNAME}
+    password: ${EMAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -31,7 +41,9 @@ server:
     context-path: /
 
 scheduler:
-  cronTime: "0 30 23 * * ?"
+  cronTime:
+    updateDatabase: "0 30 21 * * ?"
+    geoFence: "0 30 23 * * ?"
   enabled: true
 
 app:
@@ -44,3 +56,6 @@ logging:
     org.hibernate.orm.jdbc.bind: WARN
   pattern:
     console: "%d{HH:mm:ss.SSS} [%t] %-5level %logger{36}.%M -- %msg%n"
+
+api:
+  key: ${KEY}

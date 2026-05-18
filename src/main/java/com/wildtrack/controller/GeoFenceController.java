@@ -27,7 +27,7 @@ public class GeoFenceController {
         return ResponseEntity.ok(geoFenceService.findById(id));
     }
      
-    @PostMapping
+    @PostMapping("/create")
     public ResponseEntity<GeoFenceDto> create(@Valid @RequestBody GeoFenceDto dto) {
         GeoFenceDto created = geoFenceService.create(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);

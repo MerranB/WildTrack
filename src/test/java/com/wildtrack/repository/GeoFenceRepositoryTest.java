@@ -10,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.ActiveProfiles;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
@@ -19,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class GeoFenceRepositoryTest {
 
     @Autowired
-    GeoFenceRepository repository;
+    private GeoFenceRepository repository;
 
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 
@@ -36,7 +35,8 @@ class GeoFenceRepositoryTest {
 
     @Test
     void existsByName_returnsTrue_whenNameExists() {
-        repository.save(new GeoFence("Test Fence", samplePolygon(), "test@email.com", "testuser"));
+        repository.save(new GeoFence("Test Fence", samplePolygon(), "test@email.com", "testuser",
+                0));
 
         assertThat(repository.existsByName("Test Fence")).isTrue();
     }

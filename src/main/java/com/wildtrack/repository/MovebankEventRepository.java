@@ -1,6 +1,7 @@
 package com.wildtrack.repository;
 
 import com.wildtrack.model.MovebankEvent;
+import org.locationtech.jts.geom.Polygon;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
@@ -22,6 +23,11 @@ public interface MovebankEventRepository extends JpaRepository<MovebankEvent, Lo
     value = "SELECT * FROM movebank_event WHERE ST_Within(location, ST_MakeEnvelope(:minLon, :minLat, :maxLon, :maxLat, 4326))",
     countQuery = "SELECT COUNT(*) FROM movebank_event WHERE ST_Within(location, ST_MakeEnvelope(:minLon, :minLat, :maxLon, :maxLat, 4326))")
     Page<MovebankEvent> allDataPointsByBox(@Param("minLon") double minLon, @Param("minLat") double minLat, @Param("maxLon") double maxLon, @Param("maxLat") double maxLat, Pageable pageable);
+
+@Query(
+    nativeQuery = true,
+    value = "SELECT COUNT(*) FROM (SELECT DISTINCT ON (individual_id) * FROM movebank_event ORDER BY individual_id, timestamp DESC) latest_events WHERE ST_Within(location, :area)")
+    int countAnimalsInGeofence(@Param("area") Polygon area);
 
     boolean existsByTimestampAndLocationAndIndividualIdAndTagId(
             LocalDateTime timestamp, Point location,

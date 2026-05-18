@@ -33,23 +33,27 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class MovebankEventServiceTest {
 
     private static final Logger log = LoggerFactory.getLogger(MovebankEventServiceTest.class);
     @Mock
-    MovebankClient MovebankClient;
+    private MovebankClient movebankClient;
 
     @Mock
-    MovebankEventRepository movebankEventRepository;
+    private MovebankEventRepository movebankEventRepository;
 
     @Mock
-    MovebankEventMapper movebankEventMapper;
+    private MovebankEventMapper movebankEventMapper;
 
     @InjectMocks
-    MovebankEventService movebankEventService;
+    private MovebankEventService movebankEventService;
 
     private GeometryFactory geometryFactory;
 
@@ -60,12 +64,13 @@ class MovebankEventServiceTest {
 
     @Test
     void updateDatabase_fail() {
-        when(MovebankClient.getData(0L)).thenThrow(RuntimeException.class);
+        when(movebankClient.getData(0L)).thenThrow(RuntimeException.class);
         assertThrows(RuntimeException.class, () -> movebankEventService.updateDatabase(0L));
     }
+
     @Test
     void updateDatabase_parsesCorrectData() {
-        when(MovebankClient.getData(10L)).thenReturn(loadCsvAsString("CorrectCSV.csv"));
+        when(movebankClient.getData(10L)).thenReturn(loadCsvAsString("CorrectCSV.csv"));
         Point location = geometryFactory.createPoint(new Coordinate(12.1212d,-12.1212d));
         when(movebankEventMapper.toEntity(any())).thenReturn(new MovebankEvent(
                 LocalDateTime.of(2011,1,11,1,1,11,111000000),
@@ -88,20 +93,22 @@ class MovebankEventServiceTest {
         assertThat(parsed.getTagId()).isEqualTo("111111111");
 
     }
+
     @Test
     void updateDatabase_withHeaderOnlyCSV() {
 
-        when(MovebankClient.getData(20L)).thenReturn(loadCsvAsString("HeadersOnly.csv"));
+        when(movebankClient.getData(20L)).thenReturn(loadCsvAsString("HeadersOnly.csv"));
 
         String msg = movebankEventService.updateDatabase(20L);
 
         verify(movebankEventMapper, never()).toEntity(any());
         assertThat(msg).contains("FULL_SUCCESS");
     }
+
     @Test
     void updateDatabase_withMissingField() {
 
-        when(MovebankClient.getData(30L)).thenReturn(loadCsvAsString("MissingRows.csv"));
+        when(movebankClient.getData(30L)).thenReturn(loadCsvAsString("MissingRows.csv"));
         Point location = geometryFactory.createPoint(new Coordinate(12.1212d,-12.1212d));
         when(movebankEventMapper.toEntity(any())).thenReturn(new MovebankEvent(
                 LocalDateTime.of(2011,1,11,1,1,11,111000000),
@@ -130,7 +137,7 @@ class MovebankEventServiceTest {
 
     @Test
     void updateDatabase_savesNewRecord() {
-        when(MovebankClient.getData(10L)).thenReturn(loadCsvAsString("CorrectCSV.csv"));
+        when(movebankClient.getData(10L)).thenReturn(loadCsvAsString("CorrectCSV.csv"));
         when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
                 any(), any(), any(), any())).thenReturn(false);
         Point location = geometryFactory.createPoint(new Coordinate(12.1212d,-12.1212d));
@@ -193,7 +200,7 @@ class MovebankEventServiceTest {
 
     @Test
     void updateDatabase_oneRecordFails_othersStillSave() {
-        when(MovebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
+        when(movebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
         when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
                 any(), any(), any(), any())).thenReturn(false);
         Point location = geometryFactory.createPoint(new Coordinate(12.1212d,-12.1212d));
@@ -211,7 +218,7 @@ class MovebankEventServiceTest {
 
     @Test
     void updateDatabase_oneRecordFails_returnsPartialSuccess() {
-        when(MovebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
+        when(movebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
         when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
                 any(), any(), any(), any())).thenReturn(false);
         Point location = geometryFactory.createPoint(new Coordinate(12.1212d,-12.1212d));
@@ -228,7 +235,7 @@ class MovebankEventServiceTest {
     }
     @Test
     void updateDatabase_over20PercentFail_returnsFailure() {
-        when(MovebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
+        when(movebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
         when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
                 any(), any(), any(), any())).thenReturn(false);
         Point location = geometryFactory.createPoint(new Coordinate(12.1212d,-12.1212d));
@@ -251,7 +258,7 @@ class MovebankEventServiceTest {
 
     @Test
     void updateDatabase_allRecordsFail_returnsFailure() {
-        when(MovebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
+        when(movebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
         when(movebankEventMapper.toEntity(any()))
                 .thenThrow(new RuntimeException("Simulated failure"));
         String result = movebankEventService.updateDatabase(40L);
@@ -260,7 +267,7 @@ class MovebankEventServiceTest {
 
     @Test
     void updateDatabase_duplicateRecords_areSkipped() {
-        when(MovebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
+        when(movebankClient.getData(40L)).thenReturn(loadCsvAsString("MultiRecords.csv"));
         Point location = geometryFactory.createPoint(new Coordinate(12.1212d,-12.1212d));
         when(movebankEventMapper.toEntity(any())).thenReturn(new MovebankEvent(
                 LocalDateTime.of(2011,1,11,1,1,11,111000000),
@@ -295,6 +302,7 @@ class MovebankEventServiceTest {
         }
         return csvValues;
     }
+
     @Test
     void allDataPointsByRange_returnsPageOfDtos() {
         Point location = geometryFactory.createPoint(new Coordinate(12.1212d, -12.1212d));

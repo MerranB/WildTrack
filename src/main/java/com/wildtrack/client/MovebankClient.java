@@ -17,7 +17,6 @@ public class MovebankClient {
 
     private static final Logger log = LogManager.getLogger(MovebankClient.class);
 
-
     public String getData(Long id) {
 
         if(id==null){

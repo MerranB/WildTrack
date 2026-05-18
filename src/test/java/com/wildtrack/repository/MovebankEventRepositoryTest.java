@@ -12,10 +12,8 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
-
 import java.time.LocalDateTime;
 import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
@@ -24,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MovebankEventRepositoryTest {
 
     @Autowired
-    MovebankEventRepository repository;
+    private MovebankEventRepository repository;
 
     private final GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
 

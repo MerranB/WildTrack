@@ -3,47 +3,38 @@ package com.wildtrack.mapper;
 import com.wildtrack.client.dto.MovebankEventDto;
 import com.wildtrack.model.MovebankEvent;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mapstruct.factory.Mappers;
-import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 
-@ExtendWith(MockitoExtension.class)
 class MovebankEventMapperTest {
 
+    private final MovebankEventMapper mapper = Mappers.getMapper(MovebankEventMapper.class);
 
     @Test
     void toEntity_mapsAllFieldsCorrectly(){
-
-        MovebankEventMapper mapper = Mappers.getMapper(MovebankEventMapper.class);
-
-            MovebankEventDto dto = new MovebankEventDto(
-                    LocalDateTime.of(2011,1,11,1,1,11,111000000),
-                    11.1111d,
-                    -11.1111d,
-                    "11111111",
-                    "111111111"
-            );
-
-            MovebankEvent entity = mapper.toEntity(dto);
-
-            assertThat(entity.getId()).isNull();
-            assertThat(entity.getTimestamp()).isEqualTo(dto.getTimestamp());
-            assertThat(entity.getLocation().getY()).isEqualTo(dto.getLocationLat());
-            assertThat(entity.getLocation().getX()).isEqualTo(dto.getLocationLong());
-            assertThat(entity.getIndividualId()).isEqualTo(dto.getIndividualId());
-            assertThat(entity.getTagId()).isEqualTo(dto.getTagId());
-        }
+        MovebankEventDto dto = new MovebankEventDto(
+        LocalDateTime.of(2011,1,11,1,1,11,111000000),
+        11.1111d,
+        -11.1111d,
+        "11111111",
+        "111111111"
+        );
+        MovebankEvent entity = mapper.toEntity(dto);
+        assertThat(entity.getId()).isNull();
+        assertThat(entity.getTimestamp()).isEqualTo(dto.getTimestamp());
+        assertThat(entity.getLocation().getY()).isEqualTo(dto.getLocationLat());
+        assertThat(entity.getLocation().getX()).isEqualTo(dto.getLocationLong());
+        assertThat(entity.getIndividualId()).isEqualTo(dto.getIndividualId());
+        assertThat(entity.getTagId()).isEqualTo(dto.getTagId());
+    }
 
     @Test
     void toDto_mapsAllFieldsCorrectly(){
-
-        MovebankEventMapper mapper = Mappers.getMapper(MovebankEventMapper.class);
         GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
         Point location = geometryFactory.createPoint(new Coordinate(-11.1111, 11.1111));
 
@@ -63,31 +54,24 @@ class MovebankEventMapperTest {
         assertThat(dto.getIndividualId()).isEqualTo(event.getIndividualId());
         assertThat(dto.getTagId()).isEqualTo(event.getTagId());
     }
+
     @Test
     void pointToLat_returnsNull_whenPointIsNull() {
-        MovebankEventMapper mapper = Mappers.getMapper(MovebankEventMapper.class);
-
         assertThat(mapper.pointToLat(null)).isNull();
     }
 
     @Test
     void pointToLong_returnsNull_whenPointIsNull() {
-        MovebankEventMapper mapper = Mappers.getMapper(MovebankEventMapper.class);
-
         assertThat(mapper.pointToLong(null)).isNull();
     }
 
     @Test
     void toPoint_returnsNull_whenLatIsNull() {
-        MovebankEventMapper mapper = Mappers.getMapper(MovebankEventMapper.class);
-
         assertThat(mapper.toPoint(null, -11.1111d)).isNull();
     }
 
     @Test
     void toPoint_returnsNull_whenLonIsNull() {
-        MovebankEventMapper mapper = Mappers.getMapper(MovebankEventMapper.class);
-
         assertThat(mapper.toPoint(11.1111d, null)).isNull();
     }
 }

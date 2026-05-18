@@ -1,8 +1,11 @@
 package com.wildtrack.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import lombok.NoArgsConstructor;
 import org.locationtech.jts.geom.Polygon;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "geo_fence")
@@ -25,11 +28,22 @@ public class GeoFence {
     @Column(name = "username")
     private String username;
 
-    public GeoFence(String name, Polygon area, String email, String username) {
+    @Min(0)
+    @NotNull
+    @Column(name = "last_animal_count")
+    private int lastAnimalCount;
+
+    @NotNull
+    @Column(name = "last_alert_sent")
+    private LocalDateTime lastAlertSent;
+
+    public GeoFence(String name, Polygon area, String email, String username, int lastAnimalCount) {
         this.name = name;
         this.area = area;
         this.email = email;
         this.username = username;
+        this.lastAnimalCount = lastAnimalCount;
+        this.lastAlertSent = LocalDateTime.now();
         }
 
 
@@ -71,5 +85,21 @@ public class GeoFence {
     
     public String getUsername() {
         return username;
+    }
+
+        public void setLastAnimalCount(int lastAnimalCount) {
+        this.lastAnimalCount = lastAnimalCount;
+    }
+    
+    public int getLastAnimalCount() {
+        return lastAnimalCount;
+    }
+
+    public void setLastAlertSent(LocalDateTime lastAlertSent) {
+        this.lastAlertSent = lastAlertSent;
+    }
+    
+    public LocalDateTime getLastAlertSent() {
+        return lastAlertSent;
     }
 }

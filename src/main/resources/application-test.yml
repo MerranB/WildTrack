@@ -5,7 +5,21 @@ spring:
     password: ${TEST_DB_PASS}
   jpa:
     show-sql: true
+  mail:
+    host: smtp.test.com
+    port: 111
+    username: testing@email.com
+    password: testPassword
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 logging:
   level:
-   com.wildtrack: DEBUG
+    com.wildtrack: DEBUG
+
+api:
+  key: testPassword

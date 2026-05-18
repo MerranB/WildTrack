@@ -23,7 +23,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class GeoFenceServiceTest {
@@ -50,7 +51,8 @@ class GeoFenceServiceTest {
     }
 
     private GeoFence sampleEntity() {
-        return new GeoFence("Test Fence", samplePolygon(), "test@email.com", "testuser");
+        return new GeoFence("Test Fence", samplePolygon(), "test@email.com", "testuser",
+                0);
     }
 
     private GeoFenceDto sampleDto() {
@@ -64,7 +66,8 @@ class GeoFenceServiceTest {
                         new CoordinateDto(10.0, 20.0)
                 ),
                 "test@email.com",
-                "testuser"
+                "testuser",
+                0
         );
     }
 
@@ -124,8 +127,8 @@ class GeoFenceServiceTest {
     @Test
     void update_throwsWhenNotFound() {
         when(geoFenceRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class, () -> geoFenceService.update(99L, sampleDto()));
+        GeoFenceDto dto = sampleDto();
+        assertThrows(ResourceNotFoundException.class, () -> geoFenceService.update(99L, dto));
     }
 
     @Test

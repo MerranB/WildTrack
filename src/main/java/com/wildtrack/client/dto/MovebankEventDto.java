@@ -23,7 +23,6 @@ public class MovebankEventDto {
 
     public MovebankEventDto (){}
 
-
     public MovebankEventDto (LocalDateTime timestamp, Double locationLat,
                              Double locationLong, String individualId, String tagId) {
         this.timestamp = timestamp;

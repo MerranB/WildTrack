@@ -3,6 +3,7 @@ package com.wildtrack.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;
+import java.time.LocalDateTime;
 
 public class GeoFenceDto {
 
@@ -18,11 +19,18 @@ public class GeoFenceDto {
 
     private String username;
 
-    public GeoFenceDto(String name, List<CoordinateDto> coordinates, String email, String username) {
+    private int lastAnimalCount;
+
+    private LocalDateTime lastAlertSent;
+
+    public GeoFenceDto(String name, List<CoordinateDto> coordinates, String email, String username,
+                       int lastAnimalCount) {
         this.name = name;
         this.coordinates = coordinates;
         this.email = email;
         this.username = username;
+        this.lastAnimalCount = lastAnimalCount;
+        this.lastAlertSent = LocalDateTime.now();
         }
 
 
@@ -64,6 +72,22 @@ public class GeoFenceDto {
     
     public String getUsername() {
         return username;
+    }
+
+    public void setLastAnimalCount(int lastAnimalCount) {
+        this.lastAnimalCount = lastAnimalCount;
+    }
+    
+    public int getLastAnimalCount() {
+        return lastAnimalCount;
+    }
+
+    public void setLastLastAlertSent(LocalDateTime lastAlertSent) {
+        this.lastAlertSent = lastAlertSent;
+    }
+    
+    public LocalDateTime getLastAlertSent() {
+        return lastAlertSent;
     }
 
 }

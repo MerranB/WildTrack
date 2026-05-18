@@ -24,7 +24,7 @@ public class UpdateDatabaseScheduler {
     private final MovebankEventService movebankEventService;
     private static final Logger log = LoggerFactory.getLogger(UpdateDatabaseScheduler.class);
 
-    @Scheduled(cron = "${scheduler.cronTime}")
+    @Scheduled(cron = "${scheduler.cronTime.updateDatabase}")
     public void updateAllStudies() {
        List<MovebankStudy> studies = movebankStudyRepository.findAll();
        for(MovebankStudy study: studies){

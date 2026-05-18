@@ -2,19 +2,26 @@ package com.wildtrack.dto;
 
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 class CoordinateRangeRequestTest {
 
     private static Validator validator;
+    private static ValidatorFactory validatorFactory;
 
     @BeforeAll
     static void setup() {
-        validator = Validation.buildDefaultValidatorFactory().getValidator();
+        validatorFactory = Validation.buildDefaultValidatorFactory();
+        validator = validatorFactory.getValidator();
+    }
+
+    @AfterAll
+    static void teardown() {
+        validatorFactory.close();
     }
 
     @Test
