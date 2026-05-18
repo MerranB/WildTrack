@@ -11,21 +11,23 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.scheduling.annotation.Scheduled;
 import java.lang.reflect.Method;
 import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 class UpdateDatabaseSchedulerTest {
 
     @Mock
-    MovebankStudyRepository movebankStudyRepository;
+    private MovebankStudyRepository movebankStudyRepository;
 
     @Mock
-    MovebankEventService movebankEventService;
+    private MovebankEventService movebankEventService;
 
     @InjectMocks
-    UpdateDatabaseScheduler scheduler;
+    private UpdateDatabaseScheduler scheduler;
 
     @Test
     void updateAllStudies_cron_reads_from_properties() throws NoSuchMethodException {
@@ -33,8 +35,9 @@ class UpdateDatabaseSchedulerTest {
         Scheduled scheduled = method.getAnnotation(Scheduled.class);
 
         assertThat(scheduled).isNotNull();
-        assertThat(scheduled.cron()).isEqualTo("${scheduler.cronTime}");
+        assertThat(scheduled.cron()).isEqualTo("${scheduler.cronTime.updateDatabase}");
     }
+
     @Test
     void updateAllStudies_callsUpdateDatabase_forEachStudy() {
         MovebankStudy study1 = new MovebankStudy();

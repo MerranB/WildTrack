@@ -5,8 +5,10 @@ import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,10 +17,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-public class GlobalExceptionHandlerTest {
+class GlobalExceptionHandlerTest {
 
     private MockMvc mockMvc;
-
 
     @BeforeEach
     void setup() {
@@ -39,7 +40,7 @@ public class GlobalExceptionHandlerTest {
             throw new ResourceNotFoundException("Study not found");
         }
         @GetMapping("/movebank-api-limit")
-        public void throwMovebankAPIRatelimit() {
+        public void throwMovebankAPIRateLimit() {
             throw new MovebankRateLimitException();
         }
         @GetMapping("/movebank-error")
@@ -47,7 +48,9 @@ public class GlobalExceptionHandlerTest {
             throw new MovebankApiException();
         }
         @PostMapping("/test-validation")
-        public void throwValidation(@Valid @RequestBody ValidationRequest request) {}
+        public ResponseEntity<Void> throwValidation(@Valid @RequestBody ValidationRequest request) {
+           return ResponseEntity.ok().build();
+        }
     }
     static class ValidationRequest {
         @NotBlank
@@ -58,7 +61,7 @@ public class GlobalExceptionHandlerTest {
 
     @Test
     void validation_exception_returns400() throws Exception {
-        mockMvc.perform(MockMvcRequestBuilders.post("/test-validation")
+        mockMvc.perform(post("/test-validation")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -66,18 +69,17 @@ public class GlobalExceptionHandlerTest {
 
     @Test
     void resource_not_found_exception_returns404() throws Exception {
-        mockMvc.perform(MockMvcRequestBuilders.get("/test-not-found"))
+        mockMvc.perform(get("/test-not-found"))
                 .andExpect(status().isNotFound());
     }
     @Test
     void movebank_api_rate_limit() throws Exception {
-        mockMvc.perform(MockMvcRequestBuilders.get("/movebank-api-limit"))
+        mockMvc.perform(get("/movebank-api-limit"))
                 .andExpect(status().isTooManyRequests());
     }
-        @Test
+    @Test
     void movebank_api_error() throws Exception {
-        mockMvc.perform(MockMvcRequestBuilders.get("/movebank-error"))
+        mockMvc.perform(get("/movebank-error"))
                 .andExpect(status().isBadGateway());
     }
 }
-

@@ -5,6 +5,7 @@ import com.wildtrack.client.MovebankClient;
 import com.wildtrack.client.dto.MovebankEventDto;
 import com.wildtrack.exception.ResourceNotFoundException;
 import com.wildtrack.mapper.MovebankEventMapper;
+import com.wildtrack.model.MovebankEvent;
 import com.wildtrack.repository.MovebankEventRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -39,7 +40,6 @@ public class MovebankEventService {
                 .withType(MovebankEventDto.class)
                 .build()
                 .parse();
-
         for(int i = 0; i < data.size(); i ++){
             List<String> nulls =  checkForNulls(data.get(i));
             if(!nulls.isEmpty()){
@@ -49,6 +49,16 @@ public class MovebankEventService {
         }
 
         return  processBatches(data).toString();
+    }
+
+    public Page<MovebankEventDto> allDataPointsByRange(double lat, double lon, double range, Pageable pageable){
+        return movebankEventRepository.allDataPointsByRange(lat, lon, range, pageable)
+        .map(movebankEventMapper::toDto);
+    }
+
+    public Page<MovebankEventDto> allDataPointsByBox(double minLon, double minLat, double maxLon, double maxLat, Pageable pageable){
+        return movebankEventRepository.allDataPointsByBox(minLon, minLat, maxLon, maxLat, pageable)
+        .map(movebankEventMapper::toDto);
     }
 
     public Page<MovebankEventDto> findAll(Pageable pageable) {
@@ -101,14 +111,14 @@ public class MovebankEventService {
 
     private void processBatch(List<MovebankEventDto> batch,AtomicInteger saved,AtomicInteger dups,  List<String> failedThreads){
 
-        for (MovebankEventDto dataPoint : batch) {
+        for (MovebankEventDto dataPointDTO : batch) {
             try {
-
-                if (!movebankEventRepository.existsByTimestampAndLocationLatAndLocationLongAndIndividualIdAndTagId
-                        (dataPoint.getTimestamp(), dataPoint.getLocationLat(),
-                                dataPoint.getLocationLong(), dataPoint.getIndividualId(), dataPoint.getTagId()))
+                MovebankEvent dataPoint = movebankEventMapper.toEntity(dataPointDTO);
+                if (!movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId
+                        (dataPoint.getTimestamp(), dataPoint.getLocation(),
+                                dataPoint.getIndividualId(), dataPoint.getTagId()))
                 {
-                    movebankEventRepository.save(movebankEventMapper.toEntity(dataPoint));
+                    movebankEventRepository.save(dataPoint);
                     saved.getAndIncrement();
                 }
                 else{

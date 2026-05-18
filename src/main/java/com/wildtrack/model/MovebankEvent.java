@@ -3,6 +3,7 @@ package com.wildtrack.model;
 import jakarta.persistence.*;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
+import org.locationtech.jts.geom.Point;
 
 @Entity
 @Table(name = "movebank_event")
@@ -16,11 +17,8 @@ public class MovebankEvent {
     @Column(name = "timestamp")
     private LocalDateTime timestamp;
 
-    @Column(name = "location_lat")
-    private Double locationLat;
-
-    @Column(name = "location_long")
-    private Double locationLong;
+    @Column(name = "location", columnDefinition = "geometry(Point, 4326)")
+    private Point location;
 
     @Column(name = "individual_id")
     private String individualId;
@@ -28,11 +26,9 @@ public class MovebankEvent {
     @Column(name = "tag_id")
     private String tagId;
 
-    public MovebankEvent(LocalDateTime timestamp, Double locationLat,
-                         Double locationLong, String individualId, String tagId) {
+    public MovebankEvent(LocalDateTime timestamp, Point location, String individualId, String tagId) {
         this.timestamp = timestamp;
-        this.locationLat = locationLat;
-        this.locationLong = locationLong;
+        this.location = location;
         this.individualId = individualId;
         this.tagId = tagId;
         }
@@ -53,24 +49,17 @@ public class MovebankEvent {
         this.timestamp = timestamp;
     }
 
-    public Double getLocationLat() {
-        return locationLat;
-    }
-
-    public void setLocationLat(Double locationLat) {
-        this.locationLat = locationLat;
-    }
-
-    public Double getLocationLong() {
-        return locationLong;
-    }
-
-    public void setLocationLong(Double locationLong) {
-        this.locationLong = locationLong;
-    }
-
     public String getIndividualId() {
         return individualId;
+    }
+
+    public void setLocation(Point location) {
+        this.location = location;
+    }
+
+
+    public Point getLocation() {
+        return location;
     }
 
     public void setIndividualId(String individualId) {
