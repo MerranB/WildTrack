@@ -26,8 +26,7 @@ class NaturalLanguageQueryControllerTest {
 
     @Test
     void query_returnsOk_withValidPrompt() throws Exception {
-        SpatialQueryParams params = new SpatialQueryParams(-87.6298, 41.8781, 5.0, "Chicago, USA", "HIGH");
-        when(naturalLanguageQueryService.processNaturalLanguageQuery(any())).thenReturn(params);
+        SpatialQueryParams params = new SpatialQueryParams(-87.6298, 41.8781, 5.0, "Chicago, USA", "HIGH", null, null);        when(naturalLanguageQueryService.processNaturalLanguageQuery(any())).thenReturn(params);
 
         mockMvc.perform(get(ANALYSIS_URL)
                         .param("userPrompt", "show me animals near Chicago"))

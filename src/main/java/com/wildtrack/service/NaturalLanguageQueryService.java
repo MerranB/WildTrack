@@ -29,6 +29,8 @@ public class NaturalLanguageQueryService {
         "range": <decimal number in degrees, required, max 10>,
         "locationType": "<string describing the location>",
         "confidence": "<HIGH, MEDIUM, or LOW>"
+        "startDate": "<ISO date string YYYY-MM-DD, optional>",
+        "endDate": "<ISO date string YYYY-MM-DD, optional>"
     }
     
     Rules:
@@ -39,6 +41,13 @@ public class NaturalLanguageQueryService {
     - If you cannot identify any location at all, return {"error": "Could not identify a location from the query"}
     - Never return anything other than the JSON object
     - Do not include markdown code blocks or any other formatting
+    Additional rules for time parameters:
+    - startDate and endDate are optional — only include them if the query mentions a time period
+    - If only a year is mentioned (e.g. "in 2015"), set startDate to YYYY-01-01 and endDate to YYYY-12-31
+    - If only a start time is mentioned with no end (e.g. "after 2014"), set startDate only and omit endDate
+    - If only an end time is mentioned (e.g. "before 2016"), set endDate only and omit startDate
+    - Dates must be in ISO format YYYY-MM-DD
+    - If no time period is mentioned, omit both fields entirely
     """;
 
     private final ObjectMapper objectMapper;
