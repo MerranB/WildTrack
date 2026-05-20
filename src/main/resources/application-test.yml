@@ -5,6 +5,12 @@ spring:
     password: ${TEST_DB_PASS}
   jpa:
     show-sql: true
+  ai:
+    anthropic:
+      api-key: testkey
+      chat:
+        options:
+          model: claude-haiku-4-5-20251001
   mail:
     host: smtp.test.com
     port: 111

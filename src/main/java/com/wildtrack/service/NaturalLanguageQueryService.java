@@ -1,0 +1,76 @@
+package com.wildtrack.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.UserMessage;
+import java.util.List;
+import com.wildtrack.analysis.SpatialQueryParams;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wildtrack.exception.NaturalLanguageQueryException;
+
+@RequiredArgsConstructor
+@Service
+public class NaturalLanguageQueryService {
+
+    private static final String SYSTEM_PROMPT = """
+    You are a wildlife tracking assistant that extracts spatial parameters from natural language queries.
+    
+    Given a user query, extract the following information and return ONLY a JSON object with no additional text, explanation, or markdown formatting:
+    
+    {
+        "latitude": <decimal number, required>,
+        "longitude": <decimal number, required>,
+        "range": <decimal number in degrees, required, max 10>,
+        "locationType": "<string describing the location>",
+        "confidence": "<HIGH, MEDIUM, or LOW>"
+    }
+    
+    Rules:
+    - latitude must be between -90 and 90
+    - longitude must be between -180 and 180
+    - range must be between 0 and 10 (in degrees, where 1 degree is approximately 111km)
+    - If the location is ambiguous, use your best estimate and set confidence to LOW
+    - If you cannot identify any location at all, return {"error": "Could not identify a location from the query"}
+    - Never return anything other than the JSON object
+    - Do not include markdown code blocks or any other formatting
+    """;
+
+    private final ObjectMapper objectMapper;
+    private static final Logger log = LoggerFactory.getLogger(NaturalLanguageQueryService.class);
+    private final ChatModel chatModel;
+
+    public SpatialQueryParams processNaturalLanguageQuery(String userPrompt){
+        Prompt prompt = new Prompt(List.of(
+            new SystemMessage(SYSTEM_PROMPT),
+            new UserMessage(userPrompt)
+        ));
+
+        ChatResponse response = chatModel.call(prompt);
+        String result = response.getResult().getOutput().getText();
+
+        if(result!= null && result.contains("{") && result.contains("}")) {
+            result = result.substring(result.indexOf("{"), result.lastIndexOf("}") + 1);
+        }
+        else{
+            log.error("Claude failed to response correctly, responded with {}", result);
+            throw new NaturalLanguageQueryException("AI failed to process result correctly.");
+        }
+
+        if(result.contains("\"error\":")){
+            throw new NaturalLanguageQueryException("Could not process user's request.");
+        }
+
+        try{
+            return objectMapper.readValue(result, SpatialQueryParams.class);
+        }
+        catch(Exception _){
+                throw new NaturalLanguageQueryException("Error processing the json.");
+        }
+    }
+}
