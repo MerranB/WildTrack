@@ -1,10 +1,12 @@
 package com.wildtrack.controller;
 
+import com.wildtrack.client.dto.MovebankEventDto;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.wildtrack.service.NaturalLanguageQueryService;
-import com.wildtrack.analysis.SpatialQueryParams;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.validation.annotation.Validated;
 
@@ -16,8 +18,8 @@ public class NaturalLanguageQueryController {
 
     private final NaturalLanguageQueryService naturalLanguageQueryService;
 
-    @GetMapping
-    public ResponseEntity<SpatialQueryParams> processNaturalLanguageQuery(@RequestParam @NotBlank String userPrompt) {
-        return ResponseEntity.ok(naturalLanguageQueryService.processNaturalLanguageQuery(userPrompt));
+    @GetMapping("/query")
+    public ResponseEntity<Page<MovebankEventDto>> processNaturalLanguageQuery(@RequestParam @NotBlank String userPrompt, Pageable pageable) {
+        return ResponseEntity.ok(naturalLanguageQueryService.processNaturalLanguageQuery(userPrompt, pageable));
     }
 }

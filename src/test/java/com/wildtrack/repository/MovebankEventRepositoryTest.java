@@ -12,6 +12,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -49,6 +50,35 @@ class MovebankEventRepositoryTest {
         repository.saveAll(List.of(outside1, outside2));
 
         Page<MovebankEvent> result = repository.allDataPointsByRange(0.0, 0.0, 0.1, Pageable.unpaged());
+
+        assertThat(result.getContent()).isEmpty();
+    }
+
+    @Test
+    void allDataPointsByRangeAndTime_includesEventsWithinRadiusAndDateRange() {
+        MovebankEvent inside     = new MovebankEvent(LocalDateTime.of(2015, 6, 15, 0, 0), point(0.001, 0.001), "inside",      "tag1");
+        MovebankEvent outsideDate = new MovebankEvent(LocalDateTime.of(2013, 6, 15, 0, 0), point(0.001, 0.001), "outsideDate", "tag2");
+        repository.saveAll(List.of(inside, outsideDate));
+
+        Page<MovebankEvent> result = repository.allDataPointsByRangeAndTime(
+                0.0, 0.0, 0.1,
+                LocalDate.of(2015, 1, 1), LocalDate.of(2015, 12, 31),
+                Pageable.unpaged());
+
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().getFirst().getIndividualId()).isEqualTo("inside");
+    }
+
+    @Test
+    void allDataPointsByRangeAndTime_excludesEventsOutsideDateRange() {
+        MovebankEvent beforeRange = new MovebankEvent(LocalDateTime.of(2013, 12, 31, 0, 0), point(0.001, 0.001), "beforeRange", "tag1");
+        MovebankEvent afterRange  = new MovebankEvent(LocalDateTime.of(2017, 1,  1,  0, 0), point(0.001, 0.001), "afterRange",  "tag2");
+        repository.saveAll(List.of(beforeRange, afterRange));
+
+        Page<MovebankEvent> result = repository.allDataPointsByRangeAndTime(
+                0.0, 0.0, 0.1,
+                LocalDate.of(2015, 1, 1), LocalDate.of(2015, 12, 31),
+                Pageable.unpaged());
 
         assertThat(result.getContent()).isEmpty();
     }

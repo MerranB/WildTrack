@@ -1,5 +1,6 @@
 package com.wildtrack.service;
 
+import com.wildtrack.model.MovebankEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
@@ -9,14 +10,27 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
+
+import java.time.LocalDate;
 import java.util.List;
 import com.wildtrack.analysis.SpatialQueryParams;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wildtrack.exception.NaturalLanguageQueryException;
+import com.wildtrack.repository.MovebankEventRepository;
+import com.wildtrack.mapper.MovebankEventMapper;
+import com.wildtrack.client.dto.MovebankEventDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 
 @RequiredArgsConstructor
 @Service
 public class NaturalLanguageQueryService {
+
+    private final MovebankEventRepository movebankEventRepository;
+    private final MovebankEventMapper movebankEventMapper;
+    private static final LocalDate DATASET_START = LocalDate.of(2014, 1, 1);
+    private static final LocalDate DATASET_END = LocalDate.of(2016, 12, 31);
 
     private static final String SYSTEM_PROMPT = """
     You are a wildlife tracking assistant that extracts spatial parameters from natural language queries.
@@ -28,7 +42,7 @@ public class NaturalLanguageQueryService {
         "longitude": <decimal number, required>,
         "range": <decimal number in degrees, required, max 10>,
         "locationType": "<string describing the location>",
-        "confidence": "<HIGH, MEDIUM, or LOW>"
+        "confidence": "<HIGH, MEDIUM, or LOW>",
         "startDate": "<ISO date string YYYY-MM-DD, optional>",
         "endDate": "<ISO date string YYYY-MM-DD, optional>"
     }
@@ -48,13 +62,19 @@ public class NaturalLanguageQueryService {
     - If only an end time is mentioned (e.g. "before 2016"), set endDate only and omit startDate
     - Dates must be in ISO format YYYY-MM-DD
     - If no time period is mentioned, omit both fields entirely
+    Dataset context:
+    - Species: Magnificent Frigatebird
+    - Location: British Virgin Islands and surrounding Caribbean waters
+    - Time period: 2014-2016
+    - If the user's query is outside this dataset's scope, still extract the best possible parameters but set confidence to LOW and note the limitation
+    - If only a start is mentioned, set endDate to 2016-12-31 (dataset end); if only an end is mentioned, set startDate to 2014-01-01 (dataset start)
     """;
 
     private final ObjectMapper objectMapper;
     private static final Logger log = LoggerFactory.getLogger(NaturalLanguageQueryService.class);
     private final ChatModel chatModel;
 
-    public SpatialQueryParams processNaturalLanguageQuery(String userPrompt){
+    public Page<MovebankEventDto> processNaturalLanguageQuery(String userPrompt, Pageable pageable){
         Prompt prompt = new Prompt(List.of(
             new SystemMessage(SYSTEM_PROMPT),
             new UserMessage(userPrompt)
@@ -76,10 +96,28 @@ public class NaturalLanguageQueryService {
         }
 
         try{
-            return objectMapper.readValue(result, SpatialQueryParams.class);
+            return fetchResults(objectMapper.readValue(result, SpatialQueryParams.class), pageable).map(movebankEventMapper::toDto);
         }
         catch(Exception _){
                 throw new NaturalLanguageQueryException("Error processing the json.");
         }
+    }
+
+    private Page<MovebankEvent> fetchResults (SpatialQueryParams spatialQueryParams, Pageable pageable){
+        if(spatialQueryParams.startDate() != null && spatialQueryParams.endDate() != null){
+            return movebankEventRepository.allDataPointsByRangeAndTime(spatialQueryParams.latitude(), spatialQueryParams.longitude(),
+                    spatialQueryParams.range(), spatialQueryParams.startDate(), spatialQueryParams.endDate(), pageable);
+        }
+        else if(spatialQueryParams.startDate() != null){
+            return movebankEventRepository.allDataPointsByRangeAndTime(spatialQueryParams.latitude(), spatialQueryParams.longitude(),
+                    spatialQueryParams.range(), spatialQueryParams.startDate(), DATASET_END, pageable);
+        }
+        else if(spatialQueryParams.endDate() != null){
+            return movebankEventRepository.allDataPointsByRangeAndTime(spatialQueryParams.latitude(), spatialQueryParams.longitude(),
+                    spatialQueryParams.range(), DATASET_START, spatialQueryParams.endDate(), pageable);
+        }
+        return movebankEventRepository.allDataPointsByRange(spatialQueryParams.latitude(), spatialQueryParams.longitude(),
+                    spatialQueryParams.range(), pageable);
+
     }
 }

@@ -4,6 +4,7 @@ import com.wildtrack.model.MovebankEvent;
 import org.locationtech.jts.geom.Polygon;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import org.locationtech.jts.geom.Point;
 import org.springframework.data.jpa.repository.Query;
@@ -17,6 +18,10 @@ public interface MovebankEventRepository extends JpaRepository<MovebankEvent, Lo
 @Query(nativeQuery = true, value = "SELECT * FROM movebank_event WHERE  ST_DWithin(location, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :range)",
     countQuery = "SELECT COUNT(*) FROM movebank_event WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :range)")
     Page<MovebankEvent> allDataPointsByRange(@Param("lat") double lat, @Param("lon") double lon, @Param("range") double range, Pageable pageable);
+
+@Query(nativeQuery = true, value = "SELECT * FROM movebank_event WHERE  ST_DWithin(location, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :range) AND timestamp >= :startDate AND timestamp <= :endDate",
+    countQuery = "SELECT COUNT(*) FROM movebank_event WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :range) AND timestamp >= :startDate AND timestamp <= :endDate")
+    Page<MovebankEvent> allDataPointsByRangeAndTime(@Param("lat") double lat, @Param("lon") double lon, @Param("range") double range, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate, Pageable pageable);
 
 @Query(
     nativeQuery = true,
