@@ -29,12 +29,12 @@ The backend infrastructure is fully operational. The following has been built an
 
 | Phase | Feature | Status |
 |-------|---------|--------|
-| 1 | Backend infrastructure, CRUD API, test suite |  Complete |
-| 2 | Movebank ingestion service using Virtual Threads |  In Progress |
-| 3 | PostGIS spatial queries and geo-fencing alerts | Planned |
-| 4 | React + Mapbox GL frontend with 3D track visualization | Planned |
-| 5 | Spring AI natural language query interface | Planned |
-| 6 | AWS deployment (ECS + RDS) with Terraform and GitHub Actions CI/CD | Planned |
+| 1 | Backend infrastructure, CRUD API, test suite |  Completed |
+| 2 | Movebank ingestion service using Virtual Threads |  Completed |
+| 3 | PostGIS spatial queries and geo-fencing alerts | Completed |
+| 4 | Spring AI natural language query interface | Completed |
+| 5 | AWS deployment (ECS + RDS) with Terraform and GitHub Actions CI/CD | In progress |
+| 6 | React + Mapbox GL frontend with 3D track visualization | Planned |
 
 ---
 
