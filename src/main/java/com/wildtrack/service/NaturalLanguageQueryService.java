@@ -29,9 +29,11 @@ public class NaturalLanguageQueryService {
 
     private final MovebankEventRepository movebankEventRepository;
     private final MovebankEventMapper movebankEventMapper;
+    private final ObjectMapper objectMapper;
+    private static final Logger log = LoggerFactory.getLogger(NaturalLanguageQueryService.class);
+    private final ChatModel chatModel;
     private static final LocalDate DATASET_START = LocalDate.of(2014, 1, 1);
     private static final LocalDate DATASET_END = LocalDate.of(2016, 12, 31);
-
     private static final String SYSTEM_PROMPT = """
     You are a wildlife tracking assistant that extracts spatial parameters from natural language queries.
     
@@ -70,10 +72,6 @@ public class NaturalLanguageQueryService {
     - If only a start is mentioned, set endDate to 2016-12-31 (dataset end); if only an end is mentioned, set startDate to 2014-01-01 (dataset start)
     """;
 
-    private final ObjectMapper objectMapper;
-    private static final Logger log = LoggerFactory.getLogger(NaturalLanguageQueryService.class);
-    private final ChatModel chatModel;
-
     public Page<MovebankEventDto> processNaturalLanguageQuery(String userPrompt, Pageable pageable){
         Prompt prompt = new Prompt(List.of(
             new SystemMessage(SYSTEM_PROMPT),
@@ -98,8 +96,9 @@ public class NaturalLanguageQueryService {
         try{
             return fetchResults(objectMapper.readValue(result, SpatialQueryParams.class), pageable).map(movebankEventMapper::toDto);
         }
-        catch(Exception _){
-                throw new NaturalLanguageQueryException("Error processing the json.");
+        catch(Exception e){
+            log.error(e.toString());
+            throw new NaturalLanguageQueryException("Error processing the json.");
         }
     }
 
