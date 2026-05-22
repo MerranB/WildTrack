@@ -51,6 +51,10 @@ class GlobalExceptionHandlerTest {
         public ResponseEntity<Void> throwValidation(@Valid @RequestBody ValidationRequest request) {
            return ResponseEntity.ok().build();
         }
+        @GetMapping("/natural-language-error")
+            public void throwNaturalLanguageQueryException() {
+                throw new NaturalLanguageQueryException("Could not process user's request.");
+        }
     }
     static class ValidationRequest {
         @NotBlank
@@ -81,5 +85,10 @@ class GlobalExceptionHandlerTest {
     void movebank_api_error() throws Exception {
         mockMvc.perform(get("/movebank-error"))
                 .andExpect(status().isBadGateway());
+    }
+    @Test
+        void natural_language_query_exception_returns400() throws Exception {
+            mockMvc.perform(get("/natural-language-error"))
+                    .andExpect(status().isBadRequest());
     }
 }

@@ -3,6 +3,7 @@ package com.wildtrack.controller;
 import com.wildtrack.dto.GeoFenceDto;
 import com.wildtrack.service.GeoFenceService;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +19,7 @@ public class GeoFenceController {
     private final GeoFenceService geoFenceService;
 
     @GetMapping
-    public ResponseEntity<Page<GeoFenceDto>> getAll(Pageable pageable) {
+    public ResponseEntity<Page<GeoFenceDto>> getAll(@ParameterObject Pageable pageable) {
         return ResponseEntity.ok(geoFenceService.findAll(pageable));
     }
 
