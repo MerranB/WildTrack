@@ -4,6 +4,7 @@ import com.wildtrack.model.MovebankEvent;
 import com.wildtrack.repository.MovebankEventRepository;
 import com.wildtrack.service.GeoFenceAlertService;
 import com.wildtrack.service.GeoFenceService;
+import com.wildtrack.service.MovebankEventService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.locationtech.jts.geom.Coordinate;
@@ -30,7 +31,7 @@ class GeoFenceSchedulerTest {
     @Mock private GeoFenceAlertService geoFenceAlertService;
     @Mock private TaskScheduler taskScheduler;
     @Mock private GeoFenceService geoFenceService;
-    @Mock private MovebankEventRepository movebankEventRepository;
+    @Mock private MovebankEventService movebankEventService;
 
     @InjectMocks
     private GeoFenceScheduler geoFenceScheduler;
@@ -75,6 +76,6 @@ class GeoFenceSchedulerTest {
 
         verify(geoFenceAlertService).checkGeoFences();
         verify(geoFenceService).delete(1L);
-        verify(movebankEventRepository).delete(demoData);
+        verify(movebankEventService).delete(demoData.getId());
     }
 }

@@ -1,14 +1,17 @@
 package com.wildtrack.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.locationtech.jts.geom.Polygon;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "geo_fence")
+@Getter
+@Setter
 @NoArgsConstructor
 public class GeoFence {
 
@@ -28,8 +31,6 @@ public class GeoFence {
     @Column(name = "username")
     private String username;
 
-    @Min(0)
-    @NotNull
     @Column(name = "last_animal_count")
     private int lastAnimalCount;
 
@@ -44,62 +45,12 @@ public class GeoFence {
         this.username = username;
         this.lastAnimalCount = lastAnimalCount;
         this.lastAlertSent = LocalDateTime.now();
+    }
+
+    @PrePersist
+    private void prePersist() {
+        if (lastAlertSent == null) {
+            lastAlertSent = LocalDateTime.now();
         }
-
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-    
-    public String getName() {
-        return name;
-    }
-
-    public void setArea(Polygon area) {
-        this.area = area;
-    }
-
-    public Polygon getArea() {
-        return area;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-    
-    public String getEmail() {
-        return email;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-    
-    public String getUsername() {
-        return username;
-    }
-
-        public void setLastAnimalCount(int lastAnimalCount) {
-        this.lastAnimalCount = lastAnimalCount;
-    }
-    
-    public int getLastAnimalCount() {
-        return lastAnimalCount;
-    }
-
-    public void setLastAlertSent(LocalDateTime lastAlertSent) {
-        this.lastAlertSent = lastAlertSent;
-    }
-    
-    public LocalDateTime getLastAlertSent() {
-        return lastAlertSent;
     }
 }

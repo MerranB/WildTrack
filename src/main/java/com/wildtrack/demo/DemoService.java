@@ -25,7 +25,7 @@ public class DemoService {
     String testGeoFenceDemo(GeoFenceDto dto){
 
         GeoFenceDto savedFence = geoFenceService.create(dto);
-        savedFence.setLastLastAlertSent(LocalDateTime.now().minusDays(4));
+        savedFence.setLastAlertSent(LocalDateTime.now().minusDays(4));
         geoFenceService.update(savedFence.getId(), savedFence);
         List<CoordinateDto> cords = dto.getCoordinates();
 

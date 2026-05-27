@@ -1,5 +1,6 @@
 package com.wildtrack.email;
 
+import com.wildtrack.exception.EmailDeliveryException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -9,7 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -31,20 +32,13 @@ class EmailServiceImplTest {
     @Test
     void sendSimpleMail_returnsSuccess_whenEmailSent() {
         EmailDetail detail = new EmailDetail("recipient@example.com", "Test body", "Test subject", null);
-
-        String result = emailServiceImpl.sendSimpleMail(detail);
-
-        assertThat(result).isEqualTo("Mail Sent Successfully");
+        emailServiceImpl.sendSimpleMail(detail);
         verify(javaMailSender).send(any(SimpleMailMessage.class));
     }
 
     @Test
     void sendSimpleMail_returnsError_whenExceptionThrown() {
         EmailDetail detail = new EmailDetail("recipient@example.com", "Test body", "Test subject", null);
-        doThrow(new RuntimeException("SMTP error")).when(javaMailSender).send(any(SimpleMailMessage.class));
-
-        String result = emailServiceImpl.sendSimpleMail(detail);
-
-        assertThat(result).isEqualTo("Error while sending mail");
-    }
+        doThrow(new EmailDeliveryException("SMTP error", new RuntimeException("test"))).when(javaMailSender).send(any(SimpleMailMessage.class));
+        assertThrows(EmailDeliveryException.class, () -> emailServiceImpl.sendSimpleMail(detail));    }
 }

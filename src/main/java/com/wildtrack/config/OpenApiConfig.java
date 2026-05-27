@@ -28,7 +28,7 @@ public class OpenApiConfig {
                 } else if ("size".equals(param.getName())) {
                     param.setExample(20);
                 } else if ("sort".equals(param.getName())) {
-                    param.setExample("timestamp,asc");
+                    param.setExample("id,desc");
                     param.setSchema(new Schema<String>().type("string"));
                 }
             });

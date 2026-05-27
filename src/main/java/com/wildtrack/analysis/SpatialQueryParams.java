@@ -10,10 +10,6 @@ public record SpatialQueryParams(
     double latitude,
     @JsonProperty("range")
     double range,
-    @JsonProperty("locationType")
-    String locationType,
-    @JsonProperty("confidence")
-    String confidence,
     @JsonProperty("startDate")
     LocalDate  startDate,
     @JsonProperty("endDate")

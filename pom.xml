@@ -107,6 +107,11 @@
             <version>2.0.17</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j-core</artifactId>
+            <version>8.10.1</version>
+        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>

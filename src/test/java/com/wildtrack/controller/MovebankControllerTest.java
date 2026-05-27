@@ -1,8 +1,10 @@
 package com.wildtrack.controller;
 
 import com.wildtrack.client.dto.MovebankEventDto;
+import com.wildtrack.config.RateLimitInterceptor;
 import com.wildtrack.exception.ResourceNotFoundException;
 import com.wildtrack.service.MovebankEventService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -28,8 +30,7 @@ class MovebankControllerTest {
     private static final String EVENTS_URL = "/api/v1/events";
     private static final String EVENTS_BY_ID_URL = "/api/v1/events/1";
     private static final String EVENTS_NOT_FOUND_URL = "/api/v1/events/99";
-    private static final String EVENTS_UPDATE_URL = "/api/v1/events/updateDatabase/10";
-    private static final String EVENTS_UPDATE_URL_30 = "/api/v1/events/updateDatabase/30";
+    private static final String EVENTS_UPDATE_URL = "/api/v1/events/updateDatabase";
     private static final String EVENTS_BY_BOX_URL = "/api/v1/events/allDataPointsByBox";
     private static final String EVENTS_BY_RANGE_URL = "/api/v1/events/allDataPointsByRange";
 
@@ -39,10 +40,18 @@ class MovebankControllerTest {
     @MockitoBean
     private MovebankEventService movebankService;
 
+    @MockitoBean
+    private RateLimitInterceptor rateLimitInterceptor;
+
     private MovebankEventDto sampleDto() {
         return new MovebankEventDto(
                 LocalDateTime.of(2011, 1, 11, 1, 1, 11, 111000000),
                 11.1111, -11.1111, "11111111", "111111111");
+    }
+
+    @BeforeEach
+    void setUp() throws Exception {
+        when(rateLimitInterceptor.preHandle(any(), any(), any())).thenReturn(true);
     }
 
     @Test
@@ -75,7 +84,7 @@ class MovebankControllerTest {
 
     @Test
     void updateDatabase_returns_non200() throws Exception {
-        when(movebankService.updateDatabase(10L))
+        when(movebankService.updateDatabase())
                 .thenThrow(new RuntimeException(String.valueOf(500)));
 
         mockMvc.perform(post(EVENTS_UPDATE_URL))
@@ -84,17 +93,17 @@ class MovebankControllerTest {
 
     @Test
     void updateDatabase_full_success() throws Exception {
-        when(movebankService.updateDatabase(30L))
+        when(movebankService.updateDatabase())
                 .thenReturn("FULL_SUCCESS");
 
-        mockMvc.perform(post(EVENTS_UPDATE_URL_30))
+        mockMvc.perform(post(EVENTS_UPDATE_URL))
                 .andExpect(status().isOk())
                 .andExpect(content().string("FULL_SUCCESS"));
     }
 
     @Test
     void updateDatabase_partial_success() throws Exception {
-        when(movebankService.updateDatabase(10L))
+        when(movebankService.updateDatabase())
                 .thenReturn("PARTIAL_SUCCESS");
 
         mockMvc.perform(post(EVENTS_UPDATE_URL))
@@ -104,7 +113,7 @@ class MovebankControllerTest {
 
     @Test
     void updateDatabase_failure() throws Exception {
-        when(movebankService.updateDatabase(10L))
+        when(movebankService.updateDatabase())
                 .thenReturn("FAILURE");
 
         mockMvc.perform(post(EVENTS_UPDATE_URL))

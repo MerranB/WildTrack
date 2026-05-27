@@ -3,6 +3,7 @@ package com.wildtrack.service;
 import com.wildtrack.exception.ResourceNotFoundException;
 import com.wildtrack.model.GeoFence;
 import com.wildtrack.dto.GeoFenceDto;
+import com.wildtrack.util.SanitizationUtils;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,9 +38,16 @@ public class GeoFenceService {
 
     @Transactional
     public GeoFenceDto update(Long id, GeoFenceDto dto) {
+        if(!dto.getCoordinates().getFirst().equals(dto.getCoordinates().getLast())){
+            throw new IllegalArgumentException("The last coordinate must be the same as the first one");
+        }
+        dto.setName(SanitizationUtils.sanitizeString(dto.getName()));
+        dto.setUsername(SanitizationUtils.sanitizeString(dto.getUsername()));
+
         GeoFence existing = geoFenceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("GeoFence", id));
         geoFenceMapper.updateEntityFromDto(dto, existing);
+        log.info("{} has been updated successfully!", id);
         return geoFenceMapper.toDto(existing);
     }
 
@@ -49,12 +57,18 @@ public class GeoFenceService {
             throw new ResourceNotFoundException("GeoFence", id);
         }
         geoFenceRepository.deleteById(id);
+        log.info("{} has been deleted successfully!", id);
     }
     
     @Transactional
     public GeoFenceDto create(GeoFenceDto dto) {
+        if(!dto.getCoordinates().getFirst().equals(dto.getCoordinates().getLast())){
+            throw new IllegalArgumentException("The last coordinate must be the same as the first one");
+        }
+        dto.setName(SanitizationUtils.sanitizeString(dto.getName()));
+        dto.setUsername(SanitizationUtils.sanitizeString(dto.getUsername()));
         GeoFence saved = geoFenceRepository.save(geoFenceMapper.toEntity(dto));
+        log.info("{} has been created successfully!", saved.getId());
         return geoFenceMapper.toDto(saved);
     }
-
 }

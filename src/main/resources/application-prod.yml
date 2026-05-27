@@ -11,3 +11,9 @@ logging:
   level:
    com.wildtrack: INFO
    root: WARN
+
+scheduler:
+  cronTime:
+    updateDatabase: "0 30 21 * * ?"
+    geoFence: "0 30 23 * * ?"
+  enabled: false

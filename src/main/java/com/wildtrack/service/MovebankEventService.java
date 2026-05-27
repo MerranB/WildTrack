@@ -33,9 +33,9 @@ public class MovebankEventService {
     private final MovebankEventMapper movebankEventMapper;
 
     @Transactional
-    public String updateDatabase(Long id) {
+    public String updateDatabase() {
 
-        List<MovebankEventDto> data = new CsvToBeanBuilder<MovebankEventDto>(Reader.of(movebankclient.getData(id)))
+        List<MovebankEventDto> data = new CsvToBeanBuilder<MovebankEventDto>(Reader.of(movebankclient.getData(19186107L)))
                 .withIgnoreEmptyLine(true)
                 .withType(MovebankEventDto.class)
                 .build()
@@ -149,5 +149,13 @@ public class MovebankEventService {
             nullVariables.add("tag_id");
         }
         return nullVariables;
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        if (!movebankEventRepository.existsById(id)) {
+            throw new ResourceNotFoundException("Movebank", id);
+        }
+        movebankEventRepository.deleteById(id);
     }
 }

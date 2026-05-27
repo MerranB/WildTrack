@@ -1,6 +1,8 @@
 package com.wildtrack.controller;
 
+import com.wildtrack.config.RateLimitInterceptor;
 import com.wildtrack.service.NaturalLanguageQueryService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -23,6 +25,14 @@ class NaturalLanguageQueryControllerTest {
 
     @MockitoBean
     private NaturalLanguageQueryService naturalLanguageQueryService;
+
+    @MockitoBean
+    private RateLimitInterceptor rateLimitInterceptor;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        when(rateLimitInterceptor.preHandle(any(), any(), any())).thenReturn(true);
+    }
 
     @Test
     void query_returnsOk_withValidPrompt() throws Exception {
