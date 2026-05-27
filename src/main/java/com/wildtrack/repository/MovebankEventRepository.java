@@ -23,6 +23,7 @@ public interface MovebankEventRepository extends JpaRepository<MovebankEvent, Lo
     countQuery = "SELECT COUNT(*) FROM movebank_event WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint(:lon, :lat), 4326), :range) AND timestamp >= :startDate AND timestamp <= :endDate")
     Page<MovebankEvent> allDataPointsByRangeAndTime(@Param("lat") double lat, @Param("lon") double lon, @Param("range") double range, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate, Pageable pageable);
 
+
 @Query(
     nativeQuery = true,
     value = "SELECT * FROM movebank_event WHERE ST_Within(location, ST_MakeEnvelope(:minLon, :minLat, :maxLon, :maxLat, 4326))",

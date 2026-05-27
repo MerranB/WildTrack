@@ -1,5 +1,6 @@
 package com.wildtrack.email;
 
+import com.wildtrack.exception.EmailDeliveryException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,7 +19,7 @@ public class EmailServiceImpl implements EmailService {
     @Value("${spring.mail.username}")
     private String sender;
 
-    public String sendSimpleMail(EmailDetail detail) {
+    public void sendSimpleMail(EmailDetail detail) {
             
         try {
 
@@ -31,12 +32,9 @@ public class EmailServiceImpl implements EmailService {
             mailMessage.setSubject(detail.subject());
 
             javaMailSender.send(mailMessage);
-
-            return "Mail Sent Successfully";
-
         } catch (Exception e) {
-            log.error("ERROR!{}", String.valueOf(e));
-            return "Error while sending mail";
+            log.error("Failed to send email to {}", detail.recipient(), e);
+            throw new EmailDeliveryException("Failed to send alert email", e);
         }
     }
 }

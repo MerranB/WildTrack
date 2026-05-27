@@ -72,9 +72,7 @@ class NaturalLanguageQueryServiceTest {
                 {
                     "longitude": -87.6298,
                     "latitude": 41.8781,
-                    "range": 5.0,
-                    "locationType": "Chicago, USA",
-                    "confidence": "HIGH"
+                    "range": 5.0
                 }
                 """);
         when(movebankEventRepository.allDataPointsByRange(anyDouble(), anyDouble(), anyDouble(), any(Pageable.class)))
@@ -120,8 +118,6 @@ class NaturalLanguageQueryServiceTest {
                     "latitude": 18.2,
                     "longitude": -66.5,
                     "range": 5.0,
-                    "locationType": "Caribbean",
-                    "confidence": "LOW",
                     "startDate": "2015-01-01",
                     "endDate": "2015-12-31"
                 }
@@ -144,8 +140,6 @@ class NaturalLanguageQueryServiceTest {
                     "latitude": 18.2,
                     "longitude": -66.5,
                     "range": 5.0,
-                    "locationType": "Caribbean",
-                    "confidence": "HIGH",
                     "startDate": "2014-01-01"
                 }
                 """);
@@ -167,8 +161,6 @@ class NaturalLanguageQueryServiceTest {
                     "latitude": 18.2,
                     "longitude": -66.5,
                     "range": 5.0,
-                    "locationType": "Caribbean",
-                    "confidence": "HIGH",
                     "endDate": "2016-12-31"
                 }
                 """);
@@ -189,9 +181,7 @@ class NaturalLanguageQueryServiceTest {
                 {
                     "latitude": 41.8781,
                     "longitude": -87.6298,
-                    "range": 5.0,
-                    "locationType": "Chicago, USA",
-                    "confidence": "HIGH"
+                    "range": 5.0
                 }
                 """);
         when(movebankEventRepository.allDataPointsByRange(anyDouble(), anyDouble(), anyDouble(), any(Pageable.class)))
@@ -208,9 +198,7 @@ class NaturalLanguageQueryServiceTest {
                 {
                     "longitude": -87.6298,
                     "latitude": 41.8781,
-                    "range": 5.0,
-                    "locationType": "Chicago, USA",
-                    "confidence": "HIGH"
+                    "range": 5.0
                 }
                 """);
         Pageable pageable = PageRequest.of(0, 5);
@@ -229,8 +217,6 @@ class NaturalLanguageQueryServiceTest {
                     "longitude": -66.5,
                     "latitude": 18.2,
                     "range": 5.0,
-                    "locationType": "Caribbean",
-                    "confidence": "HIGH",
                     "startDate": "2014-01-01",
                     "endDate": "2014-12-31"
                 }

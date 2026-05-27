@@ -1,6 +1,7 @@
 package com.wildtrack.service;
 
 import com.wildtrack.model.MovebankEvent;
+import com.wildtrack.util.SanitizationUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
@@ -43,8 +44,6 @@ public class NaturalLanguageQueryService {
         "latitude": <decimal number, required>,
         "longitude": <decimal number, required>,
         "range": <decimal number in degrees, required, max 10>,
-        "locationType": "<string describing the location>",
-        "confidence": "<HIGH, MEDIUM, or LOW>",
         "startDate": "<ISO date string YYYY-MM-DD, optional>",
         "endDate": "<ISO date string YYYY-MM-DD, optional>"
     }
@@ -53,7 +52,6 @@ public class NaturalLanguageQueryService {
     - latitude must be between -90 and 90
     - longitude must be between -180 and 180
     - range must be between 0 and 10 (in degrees, where 1 degree is approximately 111km)
-    - If the location is ambiguous, use your best estimate and set confidence to LOW
     - If you cannot identify any location at all, return {"error": "Could not identify a location from the query"}
     - Never return anything other than the JSON object
     - Do not include markdown code blocks or any other formatting
@@ -68,11 +66,13 @@ public class NaturalLanguageQueryService {
     - Species: Magnificent Frigatebird
     - Location: British Virgin Islands and surrounding Caribbean waters
     - Time period: 2014-2016
-    - If the user's query is outside this dataset's scope, still extract the best possible parameters but set confidence to LOW and note the limitation
+    - If the user's query is outside this dataset's scope, still extract the best possible parameters but note the limitation
     - If only a start is mentioned, set endDate to 2016-12-31 (dataset end); if only an end is mentioned, set startDate to 2014-01-01 (dataset start)
     """;
 
     public Page<MovebankEventDto> processNaturalLanguageQuery(String userPrompt, Pageable pageable){
+        userPrompt = SanitizationUtils.sanitizeUserPrompt(userPrompt);
+
         Prompt prompt = new Prompt(List.of(
             new SystemMessage(SYSTEM_PROMPT),
             new UserMessage(userPrompt)

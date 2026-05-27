@@ -71,6 +71,21 @@ class GeoFenceServiceTest {
         );
     }
 
+    private GeoFenceDto sampleDto_polygon_malformed() {
+        return new GeoFenceDto(
+                "Test Fence",
+                List.of(
+                        new CoordinateDto(10.0, 20.0),
+                        new CoordinateDto(10.0, 21.0),
+                        new CoordinateDto(11.0, 21.0),
+                        new CoordinateDto(11.0, 20.0)
+                ),
+                "test@email.com",
+                "testuser",
+                0
+        );
+    }
+
     @Test
     void findAll_returnsPageOfDtos() {
         Page<GeoFence> page = new PageImpl<>(List.of(sampleEntity()));
@@ -145,5 +160,17 @@ class GeoFenceServiceTest {
         when(geoFenceRepository.existsById(99L)).thenReturn(false);
 
         assertThrows(ResourceNotFoundException.class, () -> geoFenceService.delete(99L));
+    }
+
+    @Test
+    void create_throwsIllegalArgument_whenPolygonNotClosed() {
+        GeoFenceDto dto = sampleDto_polygon_malformed();
+        assertThrows(IllegalArgumentException.class, () -> geoFenceService.create(dto));
+    }
+
+    @Test
+    void update_throwsIllegalArgument_whenPolygonNotClosed() {
+        GeoFenceDto dto = sampleDto_polygon_malformed();
+        assertThrows(IllegalArgumentException.class, () ->  geoFenceService.update(99L,dto ));
     }
 }

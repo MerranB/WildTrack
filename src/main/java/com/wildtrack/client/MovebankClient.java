@@ -3,8 +3,8 @@ package com.wildtrack.client;
 import com.wildtrack.exception.MovebankApiException;
 import com.wildtrack.exception.MovebankRateLimitException;
 import lombok.RequiredArgsConstructor;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -15,7 +15,7 @@ public class MovebankClient {
 
     private final RestClient restClient;
 
-    private static final Logger log = LogManager.getLogger(MovebankClient.class);
+    private static final Logger log = LoggerFactory.getLogger(MovebankClient.class);
 
     public String getData(Long id) {
 

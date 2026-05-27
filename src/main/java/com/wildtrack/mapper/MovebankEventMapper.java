@@ -8,11 +8,13 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 
+// IGNORE policy is intentional — DTOs deliberately expose a subset of entity fields
 @Mapper(
         componentModel = MappingConstants.ComponentModel.SPRING,
         unmappedTargetPolicy = ReportingPolicy.IGNORE
 )
 public interface MovebankEventMapper {
+    GeometryFactory GEOMETRY_FACTORY = new GeometryFactory(new PrecisionModel(), 4326);
 
     @Mapping(target = "locationLat", source = "location", qualifiedByName = "pointToLat")
     @Mapping(target = "locationLong", source = "location", qualifiedByName = "pointToLong")
@@ -34,7 +36,6 @@ public interface MovebankEventMapper {
 
     default Point toPoint(Double lat, Double lon) {
         if (lat == null || lon == null) return null;
-        return new GeometryFactory(new PrecisionModel(), 4326)
-                .createPoint(new Coordinate(lon, lat));
+        return GEOMETRY_FACTORY.createPoint(new Coordinate(lon, lat));
     }
 }

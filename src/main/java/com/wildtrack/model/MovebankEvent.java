@@ -1,11 +1,16 @@
 package com.wildtrack.model;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
+
+import lombok.Setter;
 import org.locationtech.jts.geom.Point;
 
 @Entity
+@Getter
+@Setter
 @Table(name = "movebank_event")
 @NoArgsConstructor
 public class MovebankEvent {
@@ -30,47 +35,6 @@ public class MovebankEvent {
         this.timestamp = timestamp;
         this.location = location;
         this.individualId = individualId;
-        this.tagId = tagId;
-        }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public LocalDateTime getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(LocalDateTime timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    public String getIndividualId() {
-        return individualId;
-    }
-
-    public void setLocation(Point location) {
-        this.location = location;
-    }
-
-
-    public Point getLocation() {
-        return location;
-    }
-
-    public void setIndividualId(String individualId) {
-        this.individualId = individualId;
-    }
-
-    public String getTagId() {
-        return tagId;
-    }
-
-    public void setTagId(String tagId) {
         this.tagId = tagId;
     }
 }

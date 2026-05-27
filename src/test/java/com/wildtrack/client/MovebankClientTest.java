@@ -29,27 +29,27 @@ class MovebankClientTest {
 
     @Test
     void getData_success() {
-        server.expect(requestTo(containsString("study_id=10")))
+        server.expect(requestTo(containsString("study_id=19186107")))
                 .andRespond(withSuccess("timestamp", MediaType.TEXT_PLAIN));
-        assertThat(movebankClient.getData(10L)).contains("timestamp");
+        assertThat(movebankClient.getData(19186107L)).contains("timestamp");
     }
 
     @Test
     void getData_fail() {
-        server.expect(requestTo(containsString("study_id=10")))
+        server.expect(requestTo(containsString("study_id=19186107")))
                 .andRespond(withServerError());
 
-        assertThrows(MovebankApiException.class, () -> movebankClient.getData(10L));
+        assertThrows(MovebankApiException.class, () -> movebankClient.getData(19186107L));
     }
 
     @Test
     void getData_rateLimited_throwsMovebankRateLimitException() {
-        server.expect(requestTo(containsString("study_id=10")))
+        server.expect(requestTo(containsString("study_id=19186107")))
                 .andRespond(withServerError()
                         .body("rate limiting")
                         .contentType(MediaType.TEXT_PLAIN));
 
-        assertThrows(MovebankRateLimitException.class, () -> movebankClient.getData(10L));
+        assertThrows(MovebankRateLimitException.class, () -> movebankClient.getData(19186107L));
     }
 
     @Test

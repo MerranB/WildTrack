@@ -1,7 +1,7 @@
 package com.wildtrack.service;
 
 import com.wildtrack.email.EmailDetail;
-import com.wildtrack.email.EmailServiceImpl;
+import com.wildtrack.email.EmailService;
 import com.wildtrack.model.GeoFence;
 import com.wildtrack.repository.GeoFenceRepository;
 import com.wildtrack.repository.MovebankEventRepository;
@@ -14,6 +14,8 @@ import org.locationtech.jts.geom.PrecisionModel;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +29,7 @@ class GeoFenceAlertServiceTest {
 
     @Mock private GeoFenceRepository geoFenceRepository;
     @Mock private MovebankEventRepository movebankEventRepository;
-    @Mock private EmailServiceImpl emailServiceImpl;
+    @Mock private EmailService emailService;
 
     @InjectMocks
     private GeoFenceAlertService geoFenceAlertService;
@@ -51,54 +53,52 @@ class GeoFenceAlertServiceTest {
 
     @Test
     void checkGeoFences_sendsEmail_whenCountIncreases() {
-        when(geoFenceRepository.findAll()).thenReturn(List.of(fenceWithCount(0)));
+        when(geoFenceRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(fenceWithCount(0))));
         when(movebankEventRepository.countAnimalsInGeofence(any())).thenReturn(1);
 
         geoFenceAlertService.checkGeoFences();
 
-        verify(emailServiceImpl).sendSimpleMail(any(EmailDetail.class));
+        verify(emailService).sendSimpleMail(any(EmailDetail.class));
     }
 
     @Test
     void checkGeoFences_sendsEmail_whenCountDecreases() {
-        when(geoFenceRepository.findAll()).thenReturn(List.of(fenceWithCount(2)));
+        when(geoFenceRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(fenceWithCount(2))));
         when(movebankEventRepository.countAnimalsInGeofence(any())).thenReturn(1);
 
         geoFenceAlertService.checkGeoFences();
 
-        verify(emailServiceImpl).sendSimpleMail(any(EmailDetail.class));
+        verify(emailService).sendSimpleMail(any(EmailDetail.class));
     }
 
     @Test
     void checkGeoFences_doesNotSendEmail_whenCountUnchanged() {
-        when(geoFenceRepository.findAll()).thenReturn(List.of(fenceWithCount(1)));
+        when(geoFenceRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(fenceWithCount(1))));
         when(movebankEventRepository.countAnimalsInGeofence(any())).thenReturn(1);
 
         geoFenceAlertService.checkGeoFences();
 
-        verify(emailServiceImpl, never()).sendSimpleMail(any());
+        verify(emailService, never()).sendSimpleMail(any());
     }
 
     @Test
     void checkGeoFences_doesNotSendEmail_whenCooldownNotExpired() {
         GeoFence fence = new GeoFence("Test Fence", samplePolygon(), "test@example.com",
                 "testuser", 0);
-        when(geoFenceRepository.findAll()).thenReturn(List.of(fence));
+        when(geoFenceRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(fence)));
         when(movebankEventRepository.countAnimalsInGeofence(any())).thenReturn(1);
 
         geoFenceAlertService.checkGeoFences();
 
-        verify(emailServiceImpl, never()).sendSimpleMail(any());
+        verify(emailService, never()).sendSimpleMail(any());
     }
 
     @Test
     void checkGeoFences_updatesLastAnimalCountAndSaves_afterAlert() {
         GeoFence fence = fenceWithCount(0);
-        when(geoFenceRepository.findAll()).thenReturn(List.of(fence));
+        when(geoFenceRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(fence)));
         when(movebankEventRepository.countAnimalsInGeofence(any())).thenReturn(1);
-
         geoFenceAlertService.checkGeoFences();
-
         assertThat(fence.getLastAnimalCount()).isEqualTo(1);
         verify(geoFenceRepository).save(fence);
     }

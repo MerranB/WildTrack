@@ -31,7 +31,7 @@ class DemoControllerTest {
     private DemoService demoService;
 
     @Test
-    void testGeoFenceDemo_returnsOk_withValidRequest() throws Exception {
+    void geoFenceDemo_returnsOk_withValidRequest() throws Exception {
         GeoFenceDto dto = new GeoFenceDto("Test Fence",
                 List.of(new CoordinateDto(1.0, 1.0), new CoordinateDto(1.0, -1.0),
                         new CoordinateDto(-1.0, -1.0), new CoordinateDto(-1.0, 1.0),
@@ -47,9 +47,11 @@ class DemoControllerTest {
     }
 
     @Test
-    void testGeoFenceDemo_returnsBadRequest_withInvalidEmail() throws Exception {
+    void geoFenceDemo_returnsBadRequest_withInvalidEmail() throws Exception {
         GeoFenceDto dto = new GeoFenceDto("Test Fence",
-                List.of(new CoordinateDto(1.0, 1.0)),
+                List.of(new CoordinateDto(1.0, 1.0), new CoordinateDto(1.0, -1.0),
+                        new CoordinateDto(-1.0, -1.0), new CoordinateDto(-1.0, 1.0),
+                        new CoordinateDto(1.0, 1.0)),
                 "not-an-email", "testuser", 0);
 
         mockMvc.perform(post(DEMO_URL)
@@ -59,9 +61,11 @@ class DemoControllerTest {
     }
 
     @Test
-    void testGeoFenceDemo_returnsBadRequest_withBlankName() throws Exception {
+    void geoFenceDemo_returnsBadRequest_withBlankName() throws Exception {
         GeoFenceDto dto = new GeoFenceDto("",
-                List.of(new CoordinateDto(1.0, 1.0)),
+                List.of(new CoordinateDto(1.0, 1.0), new CoordinateDto(1.0, -1.0),
+                        new CoordinateDto(-1.0, -1.0), new CoordinateDto(-1.0, 1.0),
+                        new CoordinateDto(1.0, 1.0)),
                 "test@example.com", "testuser", 0);
 
         mockMvc.perform(post(DEMO_URL)
