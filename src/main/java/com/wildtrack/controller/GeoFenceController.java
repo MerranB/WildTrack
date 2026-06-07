@@ -1,6 +1,7 @@
 package com.wildtrack.controller;
 
 import com.wildtrack.dto.GeoFenceDto;
+import com.wildtrack.model.ApiResponse;
 import com.wildtrack.service.GeoFenceService;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
@@ -223,9 +224,9 @@ public class GeoFenceController {
             summary = "Deletes a geo-fence by ID"
     )
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse> delete(@PathVariable Long id) {
         geoFenceService.delete(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(new ApiResponse("Successfully deleted " + id));
     }
 }
 

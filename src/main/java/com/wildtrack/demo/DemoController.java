@@ -1,6 +1,7 @@
 package com.wildtrack.demo;
 
 import com.wildtrack.dto.GeoFenceDto;
+import com.wildtrack.model.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -66,7 +67,7 @@ public class DemoController {
             )
     )
     @PostMapping
-    public ResponseEntity<String> testGeoFenceDemo(@Valid @RequestBody GeoFenceDto dto) {
-        return ResponseEntity.ok(demoService.testGeoFenceDemo(dto));
+    public ResponseEntity<ApiResponse> testGeoFenceDemo(@Valid @RequestBody GeoFenceDto dto) {
+        return ResponseEntity.ok(new ApiResponse(demoService.testGeoFenceDemo(dto)));
     }
 }

@@ -1,8 +1,10 @@
 package com.wildtrack.demo;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wildtrack.config.RateLimitInterceptor;
 import com.wildtrack.dto.CoordinateDto;
 import com.wildtrack.dto.GeoFenceDto;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -30,6 +32,15 @@ class DemoControllerTest {
     @MockitoBean
     private DemoService demoService;
 
+    @MockitoBean
+    private RateLimitInterceptor rateLimitInterceptor;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        when(rateLimitInterceptor.preHandle(any(), any(), any())).thenReturn(true);
+    }
+
+
     @Test
     void geoFenceDemo_returnsOk_withValidRequest() throws Exception {
         GeoFenceDto dto = new GeoFenceDto("Test Fence",
@@ -43,7 +54,7 @@ class DemoControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(dto)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("yay"));
+                .andExpect(content().json("{\"message\":\"yay\"}"));
     }
 
     @Test

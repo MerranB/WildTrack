@@ -18,8 +18,10 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class RateLimitInterceptor implements HandlerInterceptor {
 
-    private static final int STANDARD_LIMIT = 33;
-    private static final int INTENSE_LIMIT = 2;
+    private static final int STANDARD_LIMIT = 50;
+    private static final int UPDATE_DATABASE_LIMIT = 2;
+    private static final int NATURAL_QUERY_LIMIT = 2;
+    private static final int DEMO_LIMIT = 2;
 
   // Never evicted — acceptable at this scale (single ECS instance, minimal unique visitors)
     private final ConcurrentHashMap<String, Bucket> buckets = new ConcurrentHashMap<>();
@@ -32,11 +34,26 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         String ip = extractClientIp(request);
-        boolean isIntense = request.getRequestURI().contains("updateDatabase");
-        String key = ip + ":" + (isIntense ? "updateDatabase" : "standard");
-        int limit = isIntense ? INTENSE_LIMIT : STANDARD_LIMIT;
-
-        Bucket bucket = buckets.computeIfAbsent(key, k -> buildBucket(limit));
+        String key = "";
+        int limit = 0;
+        String apiCalled = request.getRequestURI();
+        if(apiCalled.contains("updateDatabase")){
+            key = ip + ":" + ("UPDATE_DATABASE_LIMIT");
+            limit = UPDATE_DATABASE_LIMIT;
+        } else if (apiCalled.contains("query")){
+            key = ip + ":" + ("NATURAL_QUERY_LIMIT");
+            limit = NATURAL_QUERY_LIMIT;
+        }
+        else if (apiCalled.contains("demo")){
+            key = ip + ":" + ("DEMO_LIMIT");
+            limit = DEMO_LIMIT;
+        }
+        else{
+            key = ip + ":" + ("STANDARD_LIMIT");
+            limit = STANDARD_LIMIT;
+        }
+        int effectiveLimit = limit;
+        Bucket bucket = buckets.computeIfAbsent(key, k -> buildBucket(effectiveLimit));
 
         if (bucket.tryConsume(1)) {
             return true;

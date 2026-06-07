@@ -58,3 +58,22 @@ resource "aws_lb" "main" {
       target_group_arn = aws_lb_target_group.app.arn
     }
   }
+
+resource "aws_alb_listener_rule" "root_redirect" {
+      listener_arn = aws_lb_listener.https.arn
+      priority     = 1
+
+    action {
+      type = "redirect"
+      redirect {
+        path        = "/swagger-ui/index.html"
+        status_code = "HTTP_302"
+      }
+    }
+
+    condition {
+      path_pattern {
+        values = ["/"]
+      }
+    }
+  }
