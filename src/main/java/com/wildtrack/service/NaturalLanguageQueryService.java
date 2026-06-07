@@ -79,6 +79,11 @@ public class NaturalLanguageQueryService {
         ));
 
         ChatResponse response = chatModel.call(prompt);
+
+        log.info("Tokens used - input: {}, output: {}",
+                response.getMetadata().getUsage().getPromptTokens(),
+                response.getMetadata().getUsage().getCompletionTokens());
+
         String result = response.getResult().getOutput().getText();
 
         if(result!= null && result.contains("{") && result.contains("}")) {

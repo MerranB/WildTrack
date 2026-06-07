@@ -59,11 +59,20 @@ class NaturalLanguageQueryServiceTest {
     @InjectMocks
     private NaturalLanguageQueryService naturalLanguageQueryService;
 
+    @Mock
+    private org.springframework.ai.chat.metadata.ChatResponseMetadata chatResponseMetadata;
+
+    @Mock
+    private org.springframework.ai.chat.metadata.Usage usage;
+
     private void mockClaudeResponse(String responseText) {
         when(assistantMessage.getText()).thenReturn(responseText);
         when(generation.getOutput()).thenReturn(assistantMessage);
         when(chatResponse.getResult()).thenReturn(generation);
         when(chatModel.call(any(Prompt.class))).thenReturn(chatResponse);
+        when(usage.getPromptTokens()).thenReturn(100);
+        when(chatResponseMetadata.getUsage()).thenReturn(usage);
+        when(chatResponse.getMetadata()).thenReturn(chatResponseMetadata);
     }
 
     @Test
@@ -107,7 +116,7 @@ class NaturalLanguageQueryServiceTest {
     void processNaturalLanguageQuery_throwsException_whenResponseIsInvalid(String response) {
         mockClaudeResponse(response);
         Pageable pageable = Pageable.unpaged();
-        assertThrows(NaturalLanguageQueryException.class,
+            assertThrows(NaturalLanguageQueryException.class,
                 () -> naturalLanguageQueryService.processNaturalLanguageQuery("asdfjkl", pageable));
     }
 
