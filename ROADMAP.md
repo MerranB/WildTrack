@@ -9,25 +9,21 @@
 | 3 | PostGIS spatial queries and geo-fence alert system |
 | 4 | Claude AI natural language query interface |
 | 5 | AWS deployment — ECS Fargate, RDS, ALB, Secrets Manager, Terraform, GitHub Actions CI/CD |
+| 6 | React + TypeScript frontend with interactive Mapbox map, spatial query UI, and geo-fence draw tool |
 
 ---
 
-## Phase 6 — React Frontend
+## Phase 7 — AI Enhancements
 
-Build a React + TypeScript frontend with an interactive live map.
+Expand the existing Claude Haiku 4.5 natural language query interface with production-grade optimizations.
 
-- Mapbox GL JS map displaying all animal tracking points
-- Clickable markers showing event metadata (timestamp, individual ID, tag ID)
-- Bounding box and radius query UI wired to the existing spatial API
-- Geo-fence draw tool — define a boundary on the map and submit it to the geo-fence API
-- Natural language query input with paginated results displayed on the map
-- Mobile-responsive layout
-
-**Stack:** React 19, TypeScript, Mapbox GL JS, hosted on AWS S3 + CloudFront
+- Anthropic prompt caching on the system prompt — reduces input token cost by ~70% at scale since the system prompt is identical on every call
+- Conversation memory — allow follow-up queries that retain context from the previous exchange (e.g. "now show me just 2015")
+- Natural language result summarization — after returning results, generate a one-sentence summary of what was found
 
 ---
 
-## Phase 7 — Spring Security
+## Phase 8 — Spring Security
 
 Add authentication and authorization to protect write endpoints.
 
@@ -39,7 +35,7 @@ Add authentication and authorization to protect write endpoints.
 
 ---
 
-## Phase 8 — Live Data Ingestion
+## Phase 9 — Live Data Ingestion
 
 Replace the historical dataset with a live connection to Movebank, removing the need for the demo workaround.
 
@@ -62,4 +58,4 @@ Replace the historical dataset with a live connection to Movebank, removing the 
 
 ## Notes
 
-The geo-fence scheduled alert checker is currently disabled in the production environment because the ingested dataset (Magnificent Frigatebird GPS, BVI, 2014–2016) is historical and produces no new movement events. Phase 8 resolves this permanently. In the meantime, the `POST /api/v1/demo` endpoint demonstrates the full production alert pipeline end-to-end.
+The geo-fence scheduled alert checker is currently disabled in the production environment because the ingested dataset (Magnificent Frigatebird GPS, BVI, 2014–2016) is historical and produces no new movement events. Phase 9 resolves this permanently. In the meantime, the `POST /api/v1/demo` endpoint demonstrates the full production alert pipeline end-to-end.
