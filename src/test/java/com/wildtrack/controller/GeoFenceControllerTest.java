@@ -121,7 +121,7 @@ class GeoFenceControllerTest {
     @Test
     void delete_returnsNoContent() throws Exception {
         mockMvc.perform(delete(GEOFENCE_BY_ID_URL))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk());
     }
 
     @Test

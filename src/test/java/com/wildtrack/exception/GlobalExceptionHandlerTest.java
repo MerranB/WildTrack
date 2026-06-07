@@ -2,6 +2,7 @@ package com.wildtrack.exception;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -56,9 +57,13 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/illegal-argument-exception-test")
         public void throwIllegalArgument() {
             throw new IllegalArgumentException("The Polygon's last coordinate must match the first coordinate."); }
+        @GetMapping("/email-delivery-error")
+        public void throwEmailDelivery() {
+            throw new EmailDeliveryException("Failed to send email", new Exception("cause")); }
     }
     static class ValidationRequest {
         @NotBlank
+        @Size(min = 5)
         private String name;
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
@@ -96,6 +101,20 @@ class GlobalExceptionHandlerTest {
     @Test
     void illegalArgumentException_returns400() throws Exception {
         mockMvc.perform(get("/illegal-argument-exception-test"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void emailDeliveryException_returns502() throws Exception {
+        mockMvc.perform(get("/email-delivery-error"))
+                .andExpect(status().isBadGateway());
+    }
+
+    @Test
+    void validation_duplicateFieldViolations_usesFirstMessage() throws Exception {
+        mockMvc.perform(post("/test-validation")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"\"}"))
                 .andExpect(status().isBadRequest());
     }
 }

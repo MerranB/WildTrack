@@ -104,36 +104,6 @@ class MovebankEventServiceTest {
     }
 
     @Test
-    void updateDatabase_withMissingField() {
-
-        when(movebankClient.getData(19186107L)).thenReturn(loadCsvAsString("MissingRows.csv"));
-        Point location = geometryFactory.createPoint(new Coordinate(12.1212d,-12.1212d));
-        when(movebankEventMapper.toEntity(any())).thenReturn(new MovebankEvent(
-                LocalDateTime.of(2011,1,11,1,1,11,111000000),
-                location,  "11111111", "111111111"
-        ));
-        when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
-                any(), any(), any(), any())).thenReturn(false);
-        ArgumentCaptor<MovebankEventDto> captor = ArgumentCaptor.forClass(MovebankEventDto.class);
-        String msg = movebankEventService.updateDatabase();
-
-        verify(movebankEventMapper, times(5)).toEntity(captor.capture());
-        List<MovebankEventDto>  allParsed = captor.getAllValues();
-
-        MovebankEventDto nullLatRecord = allParsed.stream()
-                .filter(dto -> dto.getLocationLat() == null)
-                .findFirst()
-                .orElseThrow();
-
-        assertThat(msg).contains("FULL_SUCCESS");
-        assertThat(nullLatRecord.getTimestamp()).isEqualTo(LocalDateTime.of(2022,2,22,2,2,22, 222000000));
-        assertThat(nullLatRecord.getLocationLat()).isNull();
-        assertThat(nullLatRecord.getLocationLong()).isEqualTo(-22.2222d);
-        assertThat(nullLatRecord.getIndividualId()).isEqualTo("22222222");
-        assertThat(nullLatRecord.getTagId()).isEqualTo("222222222");
-    }
-
-    @Test
     void updateDatabase_savesNewRecord() {
         when(movebankClient.getData(19186107L)).thenReturn(loadCsvAsString("CorrectCSV.csv"));
         when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
@@ -151,22 +121,20 @@ class MovebankEventServiceTest {
 
     @Test
     void findAll_returnsPageOfDtos() {
-        Point location = geometryFactory.createPoint(new Coordinate(12.1212d,-12.1212d));
-        MovebankEvent entity = new MovebankEvent(
-                LocalDateTime.of(2011,1,11,1,1,11,111000000),
-                location, "11111111", "111111111"
-        );
-        Page<MovebankEvent> page = new PageImpl<>(List.of(entity));
-        when(movebankEventRepository.findAll(any(Pageable.class))).thenReturn(page);
         when(movebankEventMapper.toDto(any())).thenReturn(new MovebankEventDto(
                 LocalDateTime.of(2011,1,11,1,1,11,111000000),
                 11.1111d, -11.1111d, "11111111", "111111111"
         ));
+        Point location = geometryFactory.createPoint(new Coordinate(12.1212d, -12.1212d));
+        when(movebankEventRepository.findAll()).thenReturn(List.of(new MovebankEvent(
+                LocalDateTime.of(2011, 1, 11, 1, 1, 11, 111000000),
+                location, "11111111", "111111111"
+        )));
 
-        Page<MovebankEventDto> result = movebankEventService.findAll(Pageable.unpaged());
+        List<MovebankEventDto> result = movebankEventService.findAll();
 
-        assertThat(result.getContent()).hasSize(1);
-        assertThat(result.getContent().getFirst().getTimestamp())
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getTimestamp())
                 .isEqualTo(LocalDateTime.of(2011,1,11,1,1,11,111000000));
     }
 
@@ -359,5 +327,24 @@ class MovebankEventServiceTest {
         Page<MovebankEventDto> result = movebankEventService.allDataPointsByBox(-10.0, -10.0, 10.0, 10.0, Pageable.unpaged());
 
         assertThat(result.getContent()).isEmpty();
+    }
+    @Test
+    void delete_deletesWhenFound() {
+        when(movebankEventRepository.existsById(1L)).thenReturn(true);
+        movebankEventService.delete(1L);
+        verify(movebankEventRepository).deleteById(1L);
+    }
+
+    @Test
+    void delete_throwsWhenNotFound() {
+        when(movebankEventRepository.existsById(99L)).thenReturn(false);
+        assertThrows(ResourceNotFoundException.class, () -> movebankEventService.delete(99L));
+    }
+
+    @Test
+    void updateDatabase_recordsMissingRequiredFields_noneReachMapper() {
+        when(movebankClient.getData(19186107L)).thenReturn(loadCsvAsString("MissingRows.csv"));
+        movebankEventService.updateDatabase();
+        verify(movebankEventMapper, never()).toEntity(any());
     }
 }

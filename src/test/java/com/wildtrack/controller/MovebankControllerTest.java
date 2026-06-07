@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(MovebankController.class)
 class MovebankControllerTest {
 
-    private static final String EVENTS_URL = "/api/v1/events";
+    private static final String EVENTS_URL = "/api/v1/events/all";
     private static final String EVENTS_BY_ID_URL = "/api/v1/events/1";
     private static final String EVENTS_NOT_FOUND_URL = "/api/v1/events/99";
     private static final String EVENTS_UPDATE_URL = "/api/v1/events/updateDatabase";
@@ -56,14 +56,14 @@ class MovebankControllerTest {
 
     @Test
     void getAll_returnsOkWithList() throws Exception {
-        Page<MovebankEventDto> page = new PageImpl<>(List.of(sampleDto()));
-        when(movebankService.findAll(any(Pageable.class))).thenReturn(page);
+        when(movebankService.findAll()).thenReturn(List.of(sampleDto()));
 
         mockMvc.perform(get(EVENTS_URL))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[0].locationLat").value("11.1111"))
-                .andExpect(jsonPath("$.totalElements").value(1));
+                .andExpect(jsonPath("$[0].locationLat").value(11.1111))
+                .andExpect(jsonPath("$.length()").value(1));
     }
+
 
     @Test
     void getById_returnsOk_whenFound() throws Exception {
@@ -98,7 +98,7 @@ class MovebankControllerTest {
 
         mockMvc.perform(post(EVENTS_UPDATE_URL))
                 .andExpect(status().isOk())
-                .andExpect(content().string("FULL_SUCCESS"));
+                .andExpect(content().json("{\"message\":\"FULL_SUCCESS\"}"));
     }
 
     @Test
@@ -108,7 +108,7 @@ class MovebankControllerTest {
 
         mockMvc.perform(post(EVENTS_UPDATE_URL))
                 .andExpect(status().isMultiStatus())
-                .andExpect(content().string("PARTIAL_SUCCESS"));
+                .andExpect(content().json("{\"message\":\"PARTIAL_SUCCESS\"}"));
     }
 
     @Test
@@ -118,7 +118,7 @@ class MovebankControllerTest {
 
         mockMvc.perform(post(EVENTS_UPDATE_URL))
                 .andExpect(status().isInternalServerError())
-                .andExpect(content().string("FAILURE"));
+                .andExpect(content().json("{\"message\":\"FAILURE\"}"));
     }
 
     @Test

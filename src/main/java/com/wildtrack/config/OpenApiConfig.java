@@ -15,7 +15,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("WildTrack API")
-                        .description("REST API for wildlife telemetry analysis. Includes CRUD endpoints for tracking events and geo-fences, a Movebank ingestion pipeline, and an AI-powered natural language query interface backed by Claude Haiku 4.5 and PostGIS spatial queries.")
+                        .description("REST API for wildlife telemetry analysis. Includes CRUD endpoints for tracking events and geo-fences, a Movebank ingestion pipeline, and an AI-powered natural language query interface backed by Claude Haiku 4.5 and PostGIS spatial queries.\n\nTo see the frontend, try out the API Explorer at [https://merranb.github.io/TheWildTrack-web/](https://merranb.github.io/TheWildTrack-web/).")
                         .version("1.0.0"));
     }
     @Bean

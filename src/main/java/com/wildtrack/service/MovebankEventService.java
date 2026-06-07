@@ -10,6 +10,7 @@ import com.wildtrack.repository.MovebankEventRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -40,13 +41,19 @@ public class MovebankEventService {
                 .withType(MovebankEventDto.class)
                 .build()
                 .parse();
-        for(int i = 0; i < data.size(); i ++){
-            List<String> nulls =  checkForNulls(data.get(i));
-            if(!nulls.isEmpty()){
+
+        for(int i = 0; i < data.size(); i ++) {
+            List<String> nulls = checkForNulls(data.get(i));
+            if (!nulls.isEmpty()) {
                 log.warn("Data Point {} is missing fields: {}", i, nulls);
             }
-
         }
+        data = data.stream()
+                .filter(e ->
+                        e.getTimestamp() != null &&
+                        e.getLocationLat() != null && e.getLocationLong() != null
+                        && !e.getTagId().isBlank() && !e.getIndividualId().isBlank())
+                .toList();
 
         return  processBatches(data).toString();
     }
@@ -61,9 +68,10 @@ public class MovebankEventService {
         .map(movebankEventMapper::toDto);
     }
 
-    public Page<MovebankEventDto> findAll(Pageable pageable) {
-        return movebankEventRepository.findAll(pageable)
-                .map(movebankEventMapper::toDto);
+    @Cacheable("events")
+    public List<MovebankEventDto> findAll() {
+        return movebankEventRepository.findAll().stream()
+                .map(movebankEventMapper::toDto).toList();
     }
 
     public MovebankEventDto findById(Long id) {

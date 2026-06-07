@@ -1,9 +1,9 @@
 package com.wildtrack.controller;
 
 import com.wildtrack.client.dto.MovebankEventDto;
+import com.wildtrack.model.ApiResponse;
 import com.wildtrack.service.MovebankEventService;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
@@ -17,6 +17,8 @@ import com.wildtrack.dto.CoordinateRangeRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/events")
 @RequiredArgsConstructor
@@ -27,24 +29,24 @@ public class MovebankController {
     private final MovebankEventService movebankEventService;
 
     @Operation(summary = "Get all telemetry events", description = "Returns all wildlife telemetry events in the database, paginated.")
-    @GetMapping
-    public ResponseEntity<Page<MovebankEventDto>> getAll(@ParameterObject Pageable pageable) {
-        return ResponseEntity.ok(movebankEventService.findAll(pageable));
+    @GetMapping("/all")
+    public ResponseEntity<List<MovebankEventDto>> getAll() {
+        return ResponseEntity.ok(movebankEventService.findAll());
     }
 
     @Operation(summary = "Trigger manual data ingestion", description = "Manually triggers ingestion of the Magnificent Frigatebird dataset from " +
             "Movebank.")
     @PostMapping("/updateDatabase")
-    public ResponseEntity<String> updateDatabase() {
+    public ResponseEntity<ApiResponse> updateDatabase() {
         String result = movebankEventService.updateDatabase();
         if(result.equals("FULL_SUCCESS")) {
-            return ResponseEntity.ok(result);
+            return ResponseEntity.ok(new ApiResponse(result));
         }
         else if(result.equals("PARTIAL_SUCCESS")) {
-            return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(result);
+            return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(new ApiResponse(result));
         }
         else{
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(result));
         }
     }
 
