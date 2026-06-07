@@ -52,7 +52,7 @@ Researchers are often overwhelmed by data noise. Movebank hosts millions of GPS 
 | 3 | PostGIS spatial queries and geo-fencing alerts | Complete |
 | 4 | Claude AI natural language query interface | Complete |
 | 5 | AWS deployment (ECS + RDS) with Terraform and GitHub Actions CI/CD | Complete |
-| 6 | React + Mapbox GL frontend — live animal location map | Planned |
+| 6 | React + Mapbox GL frontend — live animal location map | Complete |
 
 ---
 
