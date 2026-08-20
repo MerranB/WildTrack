@@ -159,7 +159,7 @@ class NaturalLanguageQueryServiceTest {
 
         verify(movebankEventRepository).allDataPointsByRangeAndTime(
                 anyDouble(), anyDouble(), anyDouble(),
-                eq(LocalDate.of(2014, 1, 1)), eq(LocalDate.of(2016, 12, 31)),
+                eq(LocalDate.of(2014, 1, 1)), eq(NaturalLanguageQueryService.DATASET_END),
                 any(Pageable.class));
     }
 
@@ -180,7 +180,7 @@ class NaturalLanguageQueryServiceTest {
 
         verify(movebankEventRepository).allDataPointsByRangeAndTime(
                 anyDouble(), anyDouble(), anyDouble(),
-                eq(LocalDate.of(2014, 1, 1)), eq(LocalDate.of(2016, 12, 31)),
+                eq(NaturalLanguageQueryService.DATASET_START), eq(LocalDate.of(2016, 12, 31)),
                 any(Pageable.class));
     }
 

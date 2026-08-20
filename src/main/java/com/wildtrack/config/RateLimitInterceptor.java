@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class RateLimitInterceptor implements HandlerInterceptor {
 
-    private static final int STANDARD_LIMIT = 50;
+    private static final int STANDARD_LIMIT = 2000;
     private static final int UPDATE_DATABASE_LIMIT = 2;
     private static final int NATURAL_QUERY_LIMIT = 2;
     private static final int DEMO_LIMIT = 2;

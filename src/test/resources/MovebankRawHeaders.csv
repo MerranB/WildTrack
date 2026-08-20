@@ -1,0 +1,4 @@
+event-id,visible,timestamp,location-long,location-lat,sensor-type,individual-taxon-canonical-name,tag-local-identifier,individual-local-identifier,study-name
+1000001,true,2015-04-12 14:22:33.000,-117.1234,33.5678,gps,Buteo jamaicensis,HAWK-TAG-01,HAWK-IND-01,Red-tailed hawks
+1000002,true,2015-04-12 15:22:33.000,-117.2234,33.6678,gps,Buteo jamaicensis,HAWK-TAG-01,HAWK-IND-01,Red-tailed hawks
+1000003,true,2015-04-13 09:10:11.000,-117.3234,33.7678,gps,Buteo jamaicensis,HAWK-TAG-02,HAWK-IND-02,Red-tailed hawks

@@ -17,36 +17,39 @@ import com.wildtrack.dto.CoordinateRangeRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/v1/events")
 @RequiredArgsConstructor
-@Tag(name = "Movebank Events", description = "Query and manage wildlife telemetry events ingested from the Movebank API. Data covers Magnificent" +
-        "Frigatebird GPS tracking in the British Virgin Islands, 2014–2016.")
+@Tag(name = "Movebank Events", description = "Query and manage wildlife telemetry events ingested from the Movebank API.")
 public class MovebankController {
 
     private final MovebankEventService movebankEventService;
 
     @Operation(summary = "Get all telemetry events", description = "Returns all wildlife telemetry events in the database, paginated.")
     @GetMapping("/all")
-    public ResponseEntity<List<MovebankEventDto>> getAll() {
-        return ResponseEntity.ok(movebankEventService.findAll());
+    public ResponseEntity<Page<MovebankEventDto>> getAll(@ParameterObject Pageable pageable) {
+        return ResponseEntity.ok(movebankEventService.findAll(pageable));
     }
 
-    @Operation(summary = "Trigger manual data ingestion", description = "Manually triggers ingestion of the Magnificent Frigatebird dataset from " +
+    @Operation(summary = "Trigger manual data ingestion", description = "Manually triggers ingestion of the data from " +
             "Movebank.")
     @PostMapping("/updateDatabase")
     public ResponseEntity<ApiResponse> updateDatabase() {
         String result = movebankEventService.updateDatabase();
-        if(result.equals("FULL_SUCCESS")) {
+        if (!(result.contains("PARTIAL_SUCCESS")
+                || result.contains("FAILURE")
+                || result.contains("FAILED")
+                || result.contains("NO_VALID_DATA"))) {
             return ResponseEntity.ok(new ApiResponse(result));
         }
-        else if(result.equals("PARTIAL_SUCCESS")) {
+        else if (result.contains("SUCCESS")) {
             return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(new ApiResponse(result));
         }
-        else{
+        else if(result.contains("FAILURE") || result.contains("FAILED")){
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(result));
+        }
+        else {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new ApiResponse(result));
         }
     }
 

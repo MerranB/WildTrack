@@ -21,7 +21,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RequiredArgsConstructor
 @Tag(name = "Geo-fence", description = """
       Create and manage geo-fences for wildlife tracking alerts. \
-      Note: the scheduled alert trigger is disabled in this environment as the current dataset (2014–2016) \
+      Note: the scheduled alert trigger is disabled in this environment as the current dataset \
       is historical and will never produce new movement events. Use the Demo endpoint to see the \
       geo-fence alert feature in action with simulated data.
       """)
