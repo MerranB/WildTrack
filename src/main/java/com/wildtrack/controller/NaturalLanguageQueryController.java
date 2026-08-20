@@ -29,18 +29,13 @@ public class NaturalLanguageQueryController {
         description = """
             Accepts a plain-English query, uses Claude Haiku 4.5 to extract spatial and temporal \
             parameters, and returns matching telemetry events from the PostGIS database.
-
-            **Dataset scope:** Magnificent Frigatebird GPS tracking, British Virgin Islands and \
-            surrounding Caribbean waters, 2014–2016. Queries outside this scope will still run \
-            but confidence will be low and results may be sparse.
-
             Select an example query from the dropdown below to get started.
             """
     )
     @GetMapping("/query")
     public ResponseEntity<Page<MovebankEventDto>> processNaturalLanguageQuery(
             @Parameter(
-                description = "A plain-English location and/or time query. The dataset covers Magnificent Frigatebird tracking near the British Virgin Islands, 2014–2016.",
+                description = "A plain-English location and/or time query.",
                 examples = {
                     @ExampleObject(name = "By location and year",     value = "Show me all sightings near the British Virgin Islands in 2015"),
                     @ExampleObject(name = "By region after a date",   value = "Find tracking events near Puerto Rico after June 2014"),

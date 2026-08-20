@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.List;
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.when;
@@ -22,7 +23,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 @WebMvcTest(MovebankController.class)
 class MovebankControllerTest {
@@ -55,13 +55,14 @@ class MovebankControllerTest {
     }
 
     @Test
-    void getAll_returnsOkWithList() throws Exception {
-        when(movebankService.findAll()).thenReturn(List.of(sampleDto()));
+    void getAll_returnsOkWithPage() throws Exception {
+        when(movebankService.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(sampleDto())));
 
         mockMvc.perform(get(EVENTS_URL))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].locationLat").value(11.1111))
-                .andExpect(jsonPath("$.length()").value(1));
+                .andExpect(jsonPath("$.content[0].locationLat").value(11.1111))
+                .andExpect(jsonPath("$.content.length()").value(1));
     }
 
 
@@ -91,34 +92,86 @@ class MovebankControllerTest {
                 .andExpect(status().isInternalServerError());
     }
 
+    // Stubs use the real summary format the service produces — "<RESULT> for <studyId>",
+    // one line per study — so the controller's substring classification is exercised
+    // against the strings it actually receives in production.
+
     @Test
-    void updateDatabase_full_success() throws Exception {
+    void updateDatabase_allStudiesFullSuccess_returns200() throws Exception {
         when(movebankService.updateDatabase())
-                .thenReturn("FULL_SUCCESS");
+                .thenReturn("FULL_SUCCESS for 19186107\nFULL_SUCCESS for 1073231887\n");
 
         mockMvc.perform(post(EVENTS_UPDATE_URL))
                 .andExpect(status().isOk())
-                .andExpect(content().json("{\"message\":\"FULL_SUCCESS\"}"));
+                .andExpect(jsonPath("$.message").value(containsString("FULL_SUCCESS for 19186107")));
     }
 
     @Test
-    void updateDatabase_partial_success() throws Exception {
+    void updateDatabase_partialSuccess_returns207() throws Exception {
         when(movebankService.updateDatabase())
-                .thenReturn("PARTIAL_SUCCESS");
+                .thenReturn("PARTIAL_SUCCESS for 19186107\n");
 
         mockMvc.perform(post(EVENTS_UPDATE_URL))
                 .andExpect(status().isMultiStatus())
-                .andExpect(content().json("{\"message\":\"PARTIAL_SUCCESS\"}"));
+                .andExpect(jsonPath("$.message").value(containsString("PARTIAL_SUCCESS")));
     }
 
     @Test
-    void updateDatabase_failure() throws Exception {
+    void updateDatabase_oneStudySucceedsOneHasNoValidData_returns207() throws Exception {
         when(movebankService.updateDatabase())
-                .thenReturn("FAILURE");
+                .thenReturn("FULL_SUCCESS for 19186107\nNO_VALID_DATA for 1073231887\n");
+
+        mockMvc.perform(post(EVENTS_UPDATE_URL))
+                .andExpect(status().isMultiStatus())
+                .andExpect(jsonPath("$.message").value(containsString("NO_VALID_DATA for 1073231887")));
+    }
+
+    @Test
+    void updateDatabase_noStudyHasValidData_returns422() throws Exception {
+        when(movebankService.updateDatabase())
+                .thenReturn("NO_VALID_DATA for 19186107\nNO_VALID_DATA for 1073231887\n");
+
+        mockMvc.perform(post(EVENTS_UPDATE_URL))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.message").value(containsString("NO_VALID_DATA")));
+    }
+
+    @Test
+    void updateDatabase_failure_returns500() throws Exception {
+        when(movebankService.updateDatabase())
+                .thenReturn("FAILURE for 19186107\n");
 
         mockMvc.perform(post(EVENTS_UPDATE_URL))
                 .andExpect(status().isInternalServerError())
-                .andExpect(content().json("{\"message\":\"FAILURE\"}"));
+                .andExpect(jsonPath("$.message").value(containsString("FAILURE")));
+    }
+
+    @Test
+    void updateDatabase_noValidDataAlongsideFailure_returns500() throws Exception {
+        when(movebankService.updateDatabase())
+                .thenReturn("NO_VALID_DATA for 19186107\nFAILURE for 1073231887\n");
+
+        mockMvc.perform(post(EVENTS_UPDATE_URL))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void updateDatabase_studyThrew_returns500() throws Exception {
+        when(movebankService.updateDatabase())
+                .thenReturn("Study 19186107 FAILED - Connection refused\n");
+
+        mockMvc.perform(post(EVENTS_UPDATE_URL))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value(containsString("FAILED")));
+    }
+
+    @Test
+    void updateDatabase_noStudyIdsConfigured_returns500() throws Exception {
+        when(movebankService.updateDatabase())
+                .thenReturn("FAILED - No study IDs configured");
+
+        mockMvc.perform(post(EVENTS_UPDATE_URL))
+                .andExpect(status().isInternalServerError());
     }
 
     @Test

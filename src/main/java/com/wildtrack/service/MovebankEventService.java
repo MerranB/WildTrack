@@ -1,162 +1,73 @@
 package com.wildtrack.service;
 
-import com.opencsv.bean.CsvToBeanBuilder;
-import com.wildtrack.client.MovebankClient;
 import com.wildtrack.client.dto.MovebankEventDto;
+import com.wildtrack.config.MovebankProperties;
 import com.wildtrack.exception.ResourceNotFoundException;
 import com.wildtrack.mapper.MovebankEventMapper;
-import com.wildtrack.model.MovebankEvent;
 import com.wildtrack.repository.MovebankEventRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import java.io.Reader;
-import java.util.ArrayList;
-import java.util.Collections;
+
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MovebankEventService {
-    public enum Result { FULL_SUCCESS, PARTIAL_SUCCESS, FAILURE; }
-    private static final int BATCH_COUNT = 20;
+
     private static final Logger log = LoggerFactory.getLogger(MovebankEventService.class);
-    private final MovebankClient movebankclient;
+
     private final MovebankEventRepository movebankEventRepository;
     private final MovebankEventMapper movebankEventMapper;
+    private final MovebankStudyIngestor movebankStudyIngestor;
+    private final MovebankProperties movebankProperties;
 
-    @Transactional
+    // No DB transaction held during the (slow) HTTP loop
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public String updateDatabase() {
+        List<Long> studyIds = movebankProperties.getStudyIds();
+        if (studyIds == null || studyIds.isEmpty()) {
+            return "FAILED - No study IDs configured";
+        }
 
-        List<MovebankEventDto> data = new CsvToBeanBuilder<MovebankEventDto>(Reader.of(movebankclient.getData(19186107L)))
-                .withIgnoreEmptyLine(true)
-                .withType(MovebankEventDto.class)
-                .build()
-                .parse();
-
-        for(int i = 0; i < data.size(); i ++) {
-            List<String> nulls = checkForNulls(data.get(i));
-            if (!nulls.isEmpty()) {
-                log.warn("Data Point {} is missing fields: {}", i, nulls);
+        StringBuilder summary = new StringBuilder();
+        for (Long studyId : studyIds) {
+            try {
+                summary.append(movebankStudyIngestor.ingestStudy(studyId)).append(" for ").append(studyId).append("\n");
+            } catch (Exception e) {
+                log.error("Study {} ingestion failed", studyId, e);
+                summary.append("Study ").append(studyId)
+                       .append(" FAILED - ").append(e.getMessage()).append("\n");
             }
         }
-        data = data.stream()
-                .filter(e ->
-                        e.getTimestamp() != null &&
-                        e.getLocationLat() != null && e.getLocationLong() != null
-                        && !e.getTagId().isBlank() && !e.getIndividualId().isBlank())
-                .toList();
-
-        return  processBatches(data).toString();
+        return summary.toString();
     }
 
-    public Page<MovebankEventDto> allDataPointsByRange(double lat, double lon, double range, Pageable pageable){
+    public Page<MovebankEventDto> allDataPointsByRange(double lat, double lon, double range, Pageable pageable) {
         return movebankEventRepository.allDataPointsByRange(lat, lon, range, pageable)
-        .map(movebankEventMapper::toDto);
+                .map(movebankEventMapper::toDto);
     }
 
-    public Page<MovebankEventDto> allDataPointsByBox(double minLon, double minLat, double maxLon, double maxLat, Pageable pageable){
+    public Page<MovebankEventDto> allDataPointsByBox(double minLon, double minLat, double maxLon, double maxLat, Pageable pageable) {
         return movebankEventRepository.allDataPointsByBox(minLon, minLat, maxLon, maxLat, pageable)
-        .map(movebankEventMapper::toDto);
+                .map(movebankEventMapper::toDto);
     }
 
-    @Cacheable("events")
-    public List<MovebankEventDto> findAll() {
-        return movebankEventRepository.findAll().stream()
-                .map(movebankEventMapper::toDto).toList();
+    public Page<MovebankEventDto> findAll(Pageable pageable) {
+        return movebankEventRepository.findAll(pageable)
+                .map(movebankEventMapper::toDto);
     }
 
     public MovebankEventDto findById(Long id) {
         return movebankEventRepository.findById(id)
                 .map(movebankEventMapper::toDto)
                 .orElseThrow(() -> new ResourceNotFoundException("MovebankEvent", id));
-    }
-
-    private Result processBatches(List<MovebankEventDto> data){
-        List<String> failedThreads = Collections.synchronizedList(new ArrayList<>());
-        int batchSize = (data.size() < BATCH_COUNT) ? data.size() : (data.size() / BATCH_COUNT);
-        AtomicInteger saved = new AtomicInteger();
-        AtomicInteger dups = new AtomicInteger();
-
-        try(var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-
-            for (int i = 0; i < data.size(); i += batchSize) {
-                int batchStart = i;
-                executor.submit(() -> {
-                    List<MovebankEventDto> batch = data.subList(batchStart, Math.min(batchStart + batchSize, data.size()));
-                    processBatch(batch, saved, dups, failedThreads);
-                });
-            }
-        }
-        log.info("Ingestion complete: {} records parsed, {} saved, {} skipped as duplicates, and {} failed",
-                data.size(),saved, dups, failedThreads.size());
-
-        if(!failedThreads.isEmpty()){
-            log.error("{} threads failed to run!", failedThreads.size());
-            failedThreads.forEach(log::error);
-        }
-
-        if(failedThreads.isEmpty()){
-            return Result.FULL_SUCCESS;
-        }
-        // 80% success threshold — if more than 20% of records fail, it likely indicates
-        // a systemic issue (e.g. DB connectivity) rather than isolated record failures.
-        else if(((double) (data.size() - failedThreads.size()) / data.size() >= .8)){
-            return Result.PARTIAL_SUCCESS;
-        }
-        else{
-            return Result.FAILURE;
-        }
-    }
-
-    private void processBatch(List<MovebankEventDto> batch,AtomicInteger saved,AtomicInteger dups,  List<String> failedThreads){
-
-        for (MovebankEventDto dataPointDTO : batch) {
-            try {
-                MovebankEvent dataPoint = movebankEventMapper.toEntity(dataPointDTO);
-                if (!movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId
-                        (dataPoint.getTimestamp(), dataPoint.getLocation(),
-                                dataPoint.getIndividualId(), dataPoint.getTagId()))
-                {
-                    movebankEventRepository.save(dataPoint);
-                    saved.getAndIncrement();
-                }
-                else{
-                    dups.getAndIncrement();
-                }
-            }
-            catch(Exception e){
-                failedThreads.add(e.toString());
-            }
-        }
-    }
-
-    private List<String> checkForNulls(MovebankEventDto dataPoint){
-        List<String> nullVariables = new ArrayList<>();
-        if(dataPoint.getTimestamp() == null){
-            nullVariables.add("timestamp");
-        }
-        if(dataPoint.getLocationLat() == null){
-            nullVariables.add("location_lat");
-        }
-        if(dataPoint.getLocationLong() == null){
-            nullVariables.add("location_long");
-        }
-        if(dataPoint.getIndividualId() == null || dataPoint.getIndividualId().isBlank()){
-            nullVariables.add("individual_id");
-        }
-        if(dataPoint.getTagId() == null  || dataPoint.getTagId().isBlank()){
-            nullVariables.add("tag_id");
-        }
-        return nullVariables;
     }
 
     @Transactional

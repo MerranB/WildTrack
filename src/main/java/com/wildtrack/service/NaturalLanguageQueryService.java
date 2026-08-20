@@ -33,8 +33,10 @@ public class NaturalLanguageQueryService {
     private final ObjectMapper objectMapper;
     private static final Logger log = LoggerFactory.getLogger(NaturalLanguageQueryService.class);
     private final ChatModel chatModel;
-    private static final LocalDate DATASET_START = LocalDate.of(2014, 1, 1);
-    private static final LocalDate DATASET_END = LocalDate.of(2016, 12, 31);
+    // Package-private so tests can assert the fill behaviour against the bounds themselves
+    // rather than hardcoded literals that break every time these values are tuned.
+    static final LocalDate DATASET_START = LocalDate.of(1980, 1, 1);
+    static final LocalDate DATASET_END = LocalDate.of(2026, 7, 31);
     private static final String SYSTEM_PROMPT = """
     You are a wildlife tracking assistant that extracts spatial parameters from natural language queries.
     
@@ -62,12 +64,6 @@ public class NaturalLanguageQueryService {
     - If only an end time is mentioned (e.g. "before 2016"), set endDate only and omit startDate
     - Dates must be in ISO format YYYY-MM-DD
     - If no time period is mentioned, omit both fields entirely
-    Dataset context:
-    - Species: Magnificent Frigatebird
-    - Location: British Virgin Islands and surrounding Caribbean waters
-    - Time period: 2014-2016
-    - If the user's query is outside this dataset's scope, still extract the best possible parameters but note the limitation
-    - If only a start is mentioned, set endDate to 2016-12-31 (dataset end); if only an end is mentioned, set startDate to 2014-01-01 (dataset start)
     """;
 
     public Page<MovebankEventDto> processNaturalLanguageQuery(String userPrompt, Pageable pageable){
