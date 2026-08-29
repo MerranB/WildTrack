@@ -69,3 +69,30 @@
     secret_id     = aws_secretsmanager_secret.api_key.id
     secret_string = var.api_key
   }
+
+ resource "aws_secretsmanager_secret" "wildtrack_admin_username" {
+      name = "${var.app_name}/wildtrack_admin_username"
+    }
+
+    resource "aws_secretsmanager_secret_version" "wildtrack_admin_username" {
+      secret_id     = aws_secretsmanager_secret.wildtrack_admin_username.id
+      secret_string = var.wildtrack_admin_username
+    }
+
+    resource "aws_secretsmanager_secret" "wildtrack_admin_password" {
+      name = "${var.app_name}/wildtrack_admin_password"
+    }
+
+    resource "aws_secretsmanager_secret_version" "wildtrack_admin_password" {
+      secret_id     = aws_secretsmanager_secret.wildtrack_admin_password.id
+      secret_string = var.wildtrack_admin_password
+    }
+
+    resource "aws_secretsmanager_secret" "wildtrack_jwt_secret" {
+      name = "${var.app_name}/wildtrack_jwt_secret"
+    }
+
+    resource "aws_secretsmanager_secret_version" "wildtrack_jwt_secret" {
+      secret_id     = aws_secretsmanager_secret.wildtrack_jwt_secret.id
+      secret_string = var.wildtrack_jwt_secret
+    }

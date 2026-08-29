@@ -90,3 +90,20 @@ variable "anthropic_api_key" {
     description = "Registered domain name"
     type        = string
   }
+ variable "wildtrack_admin_username" {
+      description = "Admin username for the WildTrack API"
+      type        = string
+      sensitive   = true
+    }
+
+    variable "wildtrack_admin_password" {
+      description = "Admin password for the WildTrack API"
+      type        = string
+      sensitive   = true
+    }
+
+    variable "wildtrack_jwt_secret" {
+      description = "HS256 signing key for API access tokens, at least 32 bytes"
+      type        = string
+      sensitive   = true
+    }

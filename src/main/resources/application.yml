@@ -45,10 +45,17 @@ spring:
           temperature: 0.1
     model:
       chat: anthropic
-
-movebank:
-  username: ${MOVEBANK_USERNAME}
-  password: ${MOVEBANK_PASSWORD}
+wildtrack:
+  security:
+    admin:
+      username: ${WILDTRACK_ADMIN_USERNAME}
+      password: ${WILDTRACK_ADMIN_PASSWORD}
+    jwt:
+      secret: ${WILDTRACK_JWT_SECRET}
+      expiry-minutes: 15
+    lockout:
+      max-attempts: 5
+      duration-minutes: 60
   study-ids:
     - 19186107
     - 1073231887

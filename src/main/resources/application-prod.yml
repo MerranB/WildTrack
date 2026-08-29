@@ -20,3 +20,6 @@ scheduler:
 
 cors:
   allowed-origins: https://merranb.github.io,https://thewildtrack.org
+
+server:
+  forward-headers-strategy: framework

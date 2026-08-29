@@ -10,6 +10,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.security.test.context.support.WithMockUser;
+import com.wildtrack.support.WithSecurityConfig;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -27,8 +29,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 
 @WebMvcTest(GeoFenceController.class)
+@WithSecurityConfig
 class GeoFenceControllerTest {
 
     private static final String TEST_FENCE_NAME = "Test Fence";
@@ -108,6 +113,7 @@ class GeoFenceControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void update_returnsOk() throws Exception {
         when(geoFenceService.update(eq(1L), any())).thenReturn(sampleDto());
 
@@ -119,17 +125,38 @@ class GeoFenceControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void delete_returnsNoContent() throws Exception {
         mockMvc.perform(delete(GEOFENCE_BY_ID_URL))
                 .andExpect(status().isOk());
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void delete_returnsNotFound_whenMissing() throws Exception {
         doThrow(new ResourceNotFoundException("GeoFence", 99L))
                 .when(geoFenceService).delete(99L);
 
         mockMvc.perform(delete(GEOFENCE_NOT_FOUND_URL))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void delete_returnsUnauthorized_whenNoCredentialsSupplied() throws Exception {
+        mockMvc.perform(delete(GEOFENCE_BY_ID_URL))
+                .andExpect(status().isUnauthorized());
+
+        verify(geoFenceService, never()).delete(any());
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void update_returnsForbidden_whenAuthenticatedUserIsNotAdmin() throws Exception {
+        mockMvc.perform(put(GEOFENCE_BY_ID_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(sampleDto())))
+                .andExpect(status().isForbidden());
+
+        verify(geoFenceService, never()).update(any(), any());
     }
 }

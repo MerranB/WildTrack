@@ -48,7 +48,10 @@
           { name = "MOVEBANK_PASSWORD",  valueFrom = aws_secretsmanager_secret.movebank_password.arn },
           { name = "EMAIL_USERNAME",     valueFrom = aws_secretsmanager_secret.email_username.arn },
           { name = "EMAIL_PASSWORD",     valueFrom = aws_secretsmanager_secret.email_password.arn },
-          { name = "KEY",                valueFrom = aws_secretsmanager_secret.api_key.arn }
+          { name = "KEY",                valueFrom = aws_secretsmanager_secret.api_key.arn },
+          { name = "WILDTRACK_ADMIN_USERNAME",  valueFrom = aws_secretsmanager_secret.wildtrack_admin_username.arn },
+          { name = "WILDTRACK_ADMIN_PASSWORD",  valueFrom = aws_secretsmanager_secret.wildtrack_admin_password.arn },
+          { name = "WILDTRACK_JWT_SECRET",      valueFrom = aws_secretsmanager_secret.wildtrack_jwt_secret.arn }
         ]
 
         logConfiguration = {
