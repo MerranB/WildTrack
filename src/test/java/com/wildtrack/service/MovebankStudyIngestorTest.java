@@ -4,27 +4,26 @@ import com.opencsv.CSVReader;
 import com.wildtrack.client.MovebankClient;
 import com.wildtrack.client.MovebankHeaderNormalizer;
 import com.wildtrack.client.dto.MovebankEventDto;
-import com.wildtrack.mapper.MovebankEventMapper;
-import com.wildtrack.model.MovebankEvent;
-import com.wildtrack.repository.MovebankEventRepository;
+import com.wildtrack.repository.MovebankEventBatchWriter;
 import com.wildtrack.service.MovebankStudyIngestor.Result;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.GeometryFactory;
-import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.geom.PrecisionModel;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.Captor;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -45,24 +44,21 @@ class MovebankStudyIngestorTest {
     @Mock
     private MovebankClient movebankClient;
 
-    // Real normalizer — a no-op on the canonical (underscore) headers the test CSVs use.
     @Spy
     private MovebankHeaderNormalizer movebankHeaderNormalizer = new MovebankHeaderNormalizer();
 
     @Mock
-    private MovebankEventRepository movebankEventRepository;
-
-    @Mock
-    private MovebankEventMapper movebankEventMapper;
+    private MovebankEventBatchWriter movebankEventBatchWriter;
 
     @InjectMocks
     private MovebankStudyIngestor movebankStudyIngestor;
 
-    private GeometryFactory geometryFactory;
+    @Captor
+    private ArgumentCaptor<List<MovebankEventDto>> batchCaptor;
 
-    @BeforeEach
-    void setUpPoint() {
-        geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
+    private void stubAllInserted() {
+        when(movebankEventBatchWriter.insertBatch(any()))
+                .thenAnswer(invocation -> invocation.<List<MovebankEventDto>>getArgument(0).size());
     }
 
     @Test
@@ -78,100 +74,78 @@ class MovebankStudyIngestorTest {
         Result result = movebankStudyIngestor.ingestStudy(STUDY_ID);
 
         assertThat(result).isEqualTo(Result.FAILURE);
-        verify(movebankEventMapper, never()).toEntity(any());
+        verify(movebankEventBatchWriter, never()).insertBatch(any());
     }
-
     @Test
-    void ingestStudy_emptyData_returnsFailure() {
-        when(movebankClient.getData(STUDY_ID)).thenReturn("");
+    void ingestStudy_emptyFile_returnsFailure() {
+        when(movebankClient.getData(STUDY_ID)).thenReturn(tempCsv(""));
 
         Result result = movebankStudyIngestor.ingestStudy(STUDY_ID);
 
         assertThat(result).isEqualTo(Result.FAILURE);
-        verify(movebankEventMapper, never()).toEntity(any());
+        verify(movebankEventBatchWriter, never()).insertBatch(any());
     }
 
     @Test
     void ingestStudy_parsesCorrectData() {
-        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsString("CorrectCSV.csv"));
-        Point location = geometryFactory.createPoint(new Coordinate(12.1212d, -12.1212d));
-        when(movebankEventMapper.toEntity(any())).thenReturn(new MovebankEvent(
-                LocalDateTime.of(2011, 1, 11, 1, 1, 11, 111000000),
-                location, "11111111", "111111111"
-        ));
-        when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
-                any(), any(), any(), any())).thenReturn(false);
-        ArgumentCaptor<MovebankEventDto> captor = ArgumentCaptor.forClass(MovebankEventDto.class);
+        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsTempFile("CorrectCSV.csv"));
+        stubAllInserted();
 
-        Result msg = movebankStudyIngestor.ingestStudy(STUDY_ID);
+        Result result = movebankStudyIngestor.ingestStudy(STUDY_ID);
 
-        verify(movebankEventMapper).toEntity(captor.capture());
-        MovebankEventDto parsed = captor.getValue();
+        verify(movebankEventBatchWriter).insertBatch(batchCaptor.capture());
+        MovebankEventDto parsed = batchCaptor.getValue().getFirst();
 
-        assertThat(msg).isEqualTo(Result.FULL_SUCCESS);
+        assertThat(result).isEqualTo(Result.FULL_SUCCESS);
         assertThat(parsed.getTimestamp()).isEqualTo(LocalDateTime.of(2011, 1, 11, 1, 1, 11, 111000000));
         assertThat(parsed.getLocationLat()).isEqualTo(11.1111d);
         assertThat(parsed.getLocationLong()).isEqualTo(-11.1111d);
         assertThat(parsed.getIndividualId()).isEqualTo("11111111");
         assertThat(parsed.getTagId()).isEqualTo("111111111");
     }
+    @ParameterizedTest(name = "{1}")
+    @CsvSource({
+            "HeadersOnly.csv,             a CSV with headers but no data rows",
+            "MissingRows.csv,             rows missing required fields",
+            "MovebankUnmappedHeaders.csv, headers the normalizer does not recognise"
+    })
+    void ingestStudy_returnsNoValidDataAndWritesNothing(String fixture, String scenario) {
+        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsTempFile(fixture));
 
-    @Test
-    void ingestStudy_withHeaderOnlyCSV_returnsNoValidData() {
-        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsString("HeadersOnly.csv"));
+        Result result = movebankStudyIngestor.ingestStudy(STUDY_ID);
 
-        Result msg = movebankStudyIngestor.ingestStudy(STUDY_ID);
-
-        verify(movebankEventMapper, never()).toEntity(any());
-        assertThat(msg).isEqualTo(Result.NO_VALID_DATA);
+        assertThat(result).as(scenario).isEqualTo(Result.NO_VALID_DATA);
+        verify(movebankEventBatchWriter, never()).insertBatch(any());
     }
 
     @Test
-    void ingestStudy_savesNewRecord() {
-        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsString("CorrectCSV.csv"));
-        when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
-                any(), any(), any(), any())).thenReturn(false);
-        Point location = geometryFactory.createPoint(new Coordinate(12.1212d, -12.1212d));
-        when(movebankEventMapper.toEntity(any())).thenReturn(new MovebankEvent(
-                LocalDateTime.of(2011, 1, 11, 1, 1, 11, 111000000),
-                location, "11111111", "111111111"
-        ));
+    void ingestStudy_handsValidRecordsToTheBatchWriter() {
+        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsTempFile("CorrectCSV.csv"));
+        stubAllInserted();
 
         movebankStudyIngestor.ingestStudy(STUDY_ID);
 
-        verify(movebankEventRepository).save(any(MovebankEvent.class));
+        verify(movebankEventBatchWriter).insertBatch(batchCaptor.capture());
+        assertThat(batchCaptor.getValue()).hasSize(1);
     }
 
     @Test
-    void ingestStudy_oneRecordFails_othersStillSave() {
-        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsString("MultiRecords.csv"));
-        when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
-                any(), any(), any(), any())).thenReturn(false);
-        Point location = geometryFactory.createPoint(new Coordinate(12.1212d, -12.1212d));
-        when(movebankEventMapper.toEntity(any()))
+    void ingestStudy_oneChunkFails_remainingChunksStillRun() {
+        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsTempFile("MultiRecords.csv"));
+        when(movebankEventBatchWriter.insertBatch(any()))
                 .thenThrow(new RuntimeException("Simulated failure"))
-                .thenReturn(new MovebankEvent(
-                        LocalDateTime.of(2012, 1, 21, 2, 1, 21, 212000000),
-                        location, "12121212", "121212121"
-                ));
+                .thenAnswer(invocation -> invocation.<List<MovebankEventDto>>getArgument(0).size());
 
         movebankStudyIngestor.ingestStudy(STUDY_ID);
-
-        verify(movebankEventRepository, times(23)).save(any(MovebankEvent.class));
+        verify(movebankEventBatchWriter, times(24)).insertBatch(any());
     }
 
     @Test
-    void ingestStudy_oneRecordFails_returnsPartialSuccess() {
-        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsString("MultiRecords.csv"));
-        when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
-                any(), any(), any(), any())).thenReturn(false);
-        Point location = geometryFactory.createPoint(new Coordinate(12.1212d, -12.1212d));
-        when(movebankEventMapper.toEntity(any()))
+    void ingestStudy_oneChunkFails_returnsPartialSuccess() {
+        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsTempFile("MultiRecords.csv"));
+        when(movebankEventBatchWriter.insertBatch(any()))
                 .thenThrow(new RuntimeException("Simulated failure"))
-                .thenReturn(new MovebankEvent(
-                        LocalDateTime.of(2012, 1, 21, 2, 1, 21, 212000000),
-                        location, "12121212", "121212121"
-                ));
+                .thenAnswer(invocation -> invocation.<List<MovebankEventDto>>getArgument(0).size());
 
         Result result = movebankStudyIngestor.ingestStudy(STUDY_ID);
 
@@ -180,21 +154,15 @@ class MovebankStudyIngestorTest {
 
     @Test
     void ingestStudy_over20PercentFail_returnsFailure() {
-        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsString("MultiRecords.csv"));
-        when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
-                any(), any(), any(), any())).thenReturn(false);
-        Point location = geometryFactory.createPoint(new Coordinate(12.1212d, -12.1212d));
-        when(movebankEventMapper.toEntity(any()))
+        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsTempFile("MultiRecords.csv"));
+        when(movebankEventBatchWriter.insertBatch(any()))
                 .thenThrow(new RuntimeException("Simulated failure"))
                 .thenThrow(new RuntimeException("Simulated failure"))
                 .thenThrow(new RuntimeException("Simulated failure"))
                 .thenThrow(new RuntimeException("Simulated failure"))
                 .thenThrow(new RuntimeException("Simulated failure"))
                 .thenThrow(new RuntimeException("Simulated failure"))
-                .thenReturn(new MovebankEvent(
-                        LocalDateTime.of(2012, 1, 21, 2, 1, 21, 212000000),
-                        location, "12121212", "121212121"
-                ));
+                .thenAnswer(invocation -> invocation.<List<MovebankEventDto>>getArgument(0).size());
 
         Result result = movebankStudyIngestor.ingestStudy(STUDY_ID);
 
@@ -202,9 +170,9 @@ class MovebankStudyIngestorTest {
     }
 
     @Test
-    void ingestStudy_allRecordsFail_returnsFailure() {
-        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsString("MultiRecords.csv"));
-        when(movebankEventMapper.toEntity(any()))
+    void ingestStudy_allChunksFail_returnsFailure() {
+        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsTempFile("MultiRecords.csv"));
+        when(movebankEventBatchWriter.insertBatch(any()))
                 .thenThrow(new RuntimeException("Simulated failure"));
 
         Result result = movebankStudyIngestor.ingestStudy(STUDY_ID);
@@ -213,56 +181,29 @@ class MovebankStudyIngestorTest {
     }
 
     @Test
-    void ingestStudy_duplicateRecords_areSkipped() {
-        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsString("MultiRecords.csv"));
-        Point location = geometryFactory.createPoint(new Coordinate(12.1212d, -12.1212d));
-        when(movebankEventMapper.toEntity(any())).thenReturn(new MovebankEvent(
-                LocalDateTime.of(2011, 1, 11, 1, 1, 11, 111000000),
-                location, "11111111", "111111111"
-        ));
-        when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
-                any(), any(), any(), any())).thenReturn(true);
-
-        movebankStudyIngestor.ingestStudy(STUDY_ID);
-
-        verify(movebankEventRepository, never()).save(any(MovebankEvent.class));
-    }
-
-    @Test
-    void ingestStudy_recordsMissingRequiredFields_noneReachMapper() {
-        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsString("MissingRows.csv"));
+    void ingestStudy_duplicateRecords_areSkippedNotFailed() {
+        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsTempFile("MultiRecords.csv"));
+        when(movebankEventBatchWriter.insertBatch(any())).thenReturn(0);
 
         Result result = movebankStudyIngestor.ingestStudy(STUDY_ID);
 
-        // Rows arrived but every one failed validation — the study yielded nothing usable,
-        // which must not be reported as success.
-        assertThat(result).isEqualTo(Result.NO_VALID_DATA);
-        verify(movebankEventMapper, never()).toEntity(any());
+        assertThat(result).isEqualTo(Result.FULL_SUCCESS);
+        verify(movebankEventBatchWriter, times(24)).insertBatch(any());
     }
-
-    // --- Raw Movebank headers -------------------------------------------------
-    // The four original fixtures all use canonical underscore headers, so the
-    // normalizer is a no-op in them. These exercise the header rewriting that
-    // ingestion of a second study actually depends on.
 
     @Test
     void ingestStudy_movebankDashedHeaders_bindsEveryField() {
-        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsString("MovebankRawHeaders.csv"));
-        Point location = geometryFactory.createPoint(new Coordinate(-117.1234d, 33.5678d));
-        when(movebankEventMapper.toEntity(any())).thenReturn(new MovebankEvent(
-                LocalDateTime.of(2015, 4, 12, 14, 22, 33),
-                location, "HAWK-IND-01", "HAWK-TAG-01"
-        ));
-        when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
-                any(), any(), any(), any())).thenReturn(false);
-        ArgumentCaptor<MovebankEventDto> captor = ArgumentCaptor.forClass(MovebankEventDto.class);
+        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsTempFile("MovebankRawHeaders.csv"));
+        stubAllInserted();
 
         Result result = movebankStudyIngestor.ingestStudy(STUDY_ID);
 
-        verify(movebankEventMapper, times(3)).toEntity(captor.capture());
-        MovebankEventDto first = captor.getAllValues().getFirst();
+        verify(movebankEventBatchWriter).insertBatch(batchCaptor.capture());
+        List<MovebankEventDto> written = batchCaptor.getValue();
+        MovebankEventDto first = written.getFirst();
 
         assertThat(result).isEqualTo(Result.FULL_SUCCESS);
+        assertThat(written).hasSize(3);
         assertThat(first.getTimestamp()).isEqualTo(LocalDateTime.of(2015, 4, 12, 14, 22, 33));
         assertThat(first.getLocationLat()).isEqualTo(33.5678d);
         assertThat(first.getLocationLong()).isEqualTo(-117.1234d);
@@ -271,75 +212,47 @@ class MovebankStudyIngestorTest {
     }
 
     @Test
-    void ingestStudy_movebankDashedHeaders_savesEveryValidRecord() {
-        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsString("MovebankRawHeaders.csv"));
-        Point location = geometryFactory.createPoint(new Coordinate(-117.1234d, 33.5678d));
-        when(movebankEventMapper.toEntity(any())).thenReturn(new MovebankEvent(
-                LocalDateTime.of(2015, 4, 12, 14, 22, 33),
-                location, "HAWK-IND-01", "HAWK-TAG-01"
-        ));
-        when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
-                any(), any(), any(), any())).thenReturn(false);
-
-        movebankStudyIngestor.ingestStudy(STUDY_ID);
-
-        verify(movebankEventRepository, times(3)).save(any(MovebankEvent.class));
-    }
-
-    @Test
-    void ingestStudy_dashedHeadersWithBadRows_savesOnlyTheValidOnes() {
-        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsString("MovebankRawHeadersMixed.csv"));
-        Point location = geometryFactory.createPoint(new Coordinate(-118.1111d, 34.1111d));
-        when(movebankEventMapper.toEntity(any())).thenReturn(new MovebankEvent(
-                LocalDateTime.of(2015, 5, 1, 10, 0, 0),
-                location, "HAWK-IND-10", "HAWK-TAG-10"
-        ));
-        when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
-                any(), any(), any(), any())).thenReturn(false);
+    void ingestStudy_dashedHeadersWithBadRows_writesOnlyTheValidOnes() {
+        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsTempFile("MovebankRawHeadersMixed.csv"));
+        stubAllInserted();
 
         Result result = movebankStudyIngestor.ingestStudy(STUDY_ID);
 
-        // Four rows in, two missing a required field — those are dropped, not failed,
-        // so the run is still a full success.
-        verify(movebankEventMapper, times(2)).toEntity(any());
-        verify(movebankEventRepository, times(2)).save(any(MovebankEvent.class));
+        verify(movebankEventBatchWriter).insertBatch(batchCaptor.capture());
+        assertThat(batchCaptor.getValue()).hasSize(2);
         assertThat(result).isEqualTo(Result.FULL_SUCCESS);
-    }
-
-    // Regression guard for the alias map: empty it or break an entry and the bound
-    // fields all come back null, every row is filtered, and this flips to NO_VALID_DATA.
-    @Test
-    void ingestStudy_headersTheNormalizerDoesNotRecognise_returnsNoValidData() {
-        when(movebankClient.getData(STUDY_ID)).thenReturn(loadCsvAsString("MovebankUnmappedHeaders.csv"));
-
-        Result result = movebankStudyIngestor.ingestStudy(STUDY_ID);
-
-        assertThat(result).isEqualTo(Result.NO_VALID_DATA);
-        verify(movebankEventMapper, never()).toEntity(any());
     }
 
     @Test
     void ingestStudy_stripsByteOrderMarkBeforeReadingHeaders() {
         String withBom = "﻿timestamp,location-long,location-lat,individual-local-identifier,tag-local-identifier\n"
                 + "2015-07-04 12:00:00.000,-120.5000,36.5000,HAWK-IND-30,HAWK-TAG-30";
-        when(movebankClient.getData(STUDY_ID)).thenReturn(withBom);
-        Point location = geometryFactory.createPoint(new Coordinate(-120.5d, 36.5d));
-        when(movebankEventMapper.toEntity(any())).thenReturn(new MovebankEvent(
-                LocalDateTime.of(2015, 7, 4, 12, 0, 0),
-                location, "HAWK-IND-30", "HAWK-TAG-30"
-        ));
-        when(movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
-                any(), any(), any(), any())).thenReturn(false);
-        ArgumentCaptor<MovebankEventDto> captor = ArgumentCaptor.forClass(MovebankEventDto.class);
+        when(movebankClient.getData(STUDY_ID)).thenReturn(tempCsv(withBom));
+        stubAllInserted();
 
         Result result = movebankStudyIngestor.ingestStudy(STUDY_ID);
 
-        // A surviving BOM would corrupt the first header token and null the timestamp,
-        // which would drop the only row and return NO_VALID_DATA instead.
-        verify(movebankEventMapper).toEntity(captor.capture());
+        verify(movebankEventBatchWriter).insertBatch(batchCaptor.capture());
+        MovebankEventDto written = batchCaptor.getValue().getFirst();
+
         assertThat(result).isEqualTo(Result.FULL_SUCCESS);
-        assertThat(captor.getValue().getTimestamp()).isEqualTo(LocalDateTime.of(2015, 7, 4, 12, 0, 0));
-        assertThat(captor.getValue().getTagId()).isEqualTo("HAWK-TAG-30");
+        assertThat(written.getTimestamp()).isEqualTo(LocalDateTime.of(2015, 7, 4, 12, 0, 0));
+        assertThat(written.getTagId()).isEqualTo("HAWK-TAG-30");
+    }
+
+    Path loadCsvAsTempFile(String filename) {
+        return tempCsv(loadCsvAsString(filename));
+    }
+
+    Path tempCsv(String content) {
+        try {
+            Path temp = Files.createTempFile("ingestor-test-", ".csv");
+            Files.writeString(temp, content, StandardCharsets.UTF_8);
+            return temp;
+        } catch (IOException e) {
+            Assertions.fail("Failed to write temp CSV", e);
+            return null;
+        }
     }
 
     String loadCsvAsString(String filename) {

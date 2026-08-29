@@ -2,12 +2,15 @@ package com.wildtrack.controller;
 
 import com.wildtrack.client.dto.MovebankEventDto;
 import com.wildtrack.config.RateLimitInterceptor;
+import com.wildtrack.dto.Hotspot;
 import com.wildtrack.exception.ResourceNotFoundException;
 import com.wildtrack.service.MovebankEventService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.data.domain.SliceImpl;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.data.domain.Page;
@@ -18,9 +21,13 @@ import java.util.List;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -33,6 +40,9 @@ class MovebankControllerTest {
     private static final String EVENTS_UPDATE_URL = "/api/v1/events/updateDatabase";
     private static final String EVENTS_BY_BOX_URL = "/api/v1/events/allDataPointsByBox";
     private static final String EVENTS_BY_RANGE_URL = "/api/v1/events/allDataPointsByRange";
+    private static final String TILE_URL = "/api/v1/events/tiles/{z}/{x}/{y}.mvt";
+    private static final String HOTSPOTS_URL = "/api/v1/events/hotspots";
+    private static final String MVT_CONTENT_TYPE = "application/vnd.mapbox-vector-tile";
 
     @Autowired
     private MockMvc mockMvc;
@@ -55,9 +65,9 @@ class MovebankControllerTest {
     }
 
     @Test
-    void getAll_returnsOkWithPage() throws Exception {
+    void getAll_returnsOkWithSlice() throws Exception {
         when(movebankService.findAll(any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(sampleDto())));
+                .thenReturn(new SliceImpl<>(List.of(sampleDto())));
 
         mockMvc.perform(get(EVENTS_URL))
                 .andExpect(status().isOk())
@@ -91,10 +101,6 @@ class MovebankControllerTest {
         mockMvc.perform(post(EVENTS_UPDATE_URL))
                 .andExpect(status().isInternalServerError());
     }
-
-    // Stubs use the real summary format the service produces — "<RESULT> for <studyId>",
-    // one line per study — so the controller's substring classification is exercised
-    // against the strings it actually receives in production.
 
     @Test
     void updateDatabase_allStudiesFullSuccess_returns200() throws Exception {
@@ -232,5 +238,112 @@ class MovebankControllerTest {
         mockMvc.perform(get(EVENTS_BY_RANGE_URL)
                         .param("lon", "0.0").param("lat", "0.0").param("range", "11.0"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getTileByZ_returnsTileBytesWithMvtContentType() throws Exception {
+        byte[] tile = {1, 2, 3, 4};
+        when(movebankService.getTileByZ(5, 10, 12)).thenReturn(tile);
+
+        mockMvc.perform(get(TILE_URL, 5, 10, 12))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MVT_CONTENT_TYPE))
+                .andExpect(content().bytes(tile));
+    }
+
+    @Test
+    void getTileByZ_passesPathVariablesInZxyOrder() throws Exception {
+        when(movebankService.getTileByZ(3, 1, 2)).thenReturn(new byte[]{9});
+
+        mockMvc.perform(get(TILE_URL, 3, 1, 2))
+                .andExpect(status().isOk());
+
+        verify(movebankService).getTileByZ(3, 1, 2);
+    }
+
+    @Test
+    void getTileByZ_returnsNoContent_whenTileIsEmpty() throws Exception {
+        when(movebankService.getTileByZ(5, 10, 12)).thenReturn(new byte[0]);
+
+        mockMvc.perform(get(TILE_URL, 5, 10, 12))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void getTileByZ_returnsNoContent_whenTileIsNull() throws Exception {
+        when(movebankService.getTileByZ(5, 10, 12)).thenReturn(null);
+
+        mockMvc.perform(get(TILE_URL, 5, 10, 12))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void getTileByZ_returnsBadRequest_whenCoordinatesOutsideZoomGrid() throws Exception {
+        // z=2 has a 4x4 grid, so 4 is one past the last valid index.
+        mockMvc.perform(get(TILE_URL, 2, 4, 0)).andExpect(status().isBadRequest());
+        mockMvc.perform(get(TILE_URL, 2, 0, 4)).andExpect(status().isBadRequest());
+
+        verify(movebankService, never()).getTileByZ(anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    void getTileByZ_returnsBadRequest_whenZoomOutOfRange() throws Exception {
+        mockMvc.perform(get(TILE_URL, 23, 0, 0)).andExpect(status().isBadRequest());
+
+        verify(movebankService, never()).getTileByZ(anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    void getTileByZ_returnsBadRequest_whenCoordinatesNegative() throws Exception {
+        mockMvc.perform(get(TILE_URL, 5, -1, 0)).andExpect(status().isBadRequest());
+        mockMvc.perform(get(TILE_URL, 5, 0, -1)).andExpect(status().isBadRequest());
+
+        verify(movebankService, never()).getTileByZ(anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    void getHotspots_returnsOkWithCells() throws Exception {
+        when(movebankService.hotspots()).thenReturn(List.of(
+                new Hotspot(37.41, -6.43, 2538111L),
+                new Hotspot(33.19, -117.52, 38050L)));
+
+        mockMvc.perform(get(HOTSPOTS_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].lat").value(37.41))
+                .andExpect(jsonPath("$[0].lon").value(-6.43))
+                .andExpect(jsonPath("$[0].total").value(2538111));
+    }
+
+    @Test
+    void getHotspots_returnsOkWithEmptyArray_whenNoData() throws Exception {
+        when(movebankService.hotspots()).thenReturn(List.of());
+
+        mockMvc.perform(get(HOTSPOTS_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void getHotspots_returnsServerError_whenServiceFails() throws Exception {
+        when(movebankService.hotspots())
+                .thenThrow(new DataAccessResourceFailureException("connection lost"));
+
+        mockMvc.perform(get(HOTSPOTS_URL))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void getTileByZ_doesNotReturnOk_whenServiceFails() throws Exception {
+        when(movebankService.getTileByZ(5, 10, 12))
+                .thenThrow(new DataAccessResourceFailureException("connection lost"));
+
+        mockMvc.perform(get(TILE_URL, 5, 10, 12))
+                .andExpect(result -> {
+                    int status = result.getResponse().getStatus();
+                    if (status == 200) {
+                        throw new AssertionError("A failed tile query must not be reported as 200");
+                    }
+                });
     }
 }

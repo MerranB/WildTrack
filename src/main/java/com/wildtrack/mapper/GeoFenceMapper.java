@@ -11,7 +11,6 @@ import java.util.Arrays;
 import com.wildtrack.model.GeoFence;
 import com.wildtrack.dto.GeoFenceDto;
 
-// IGNORE policy is intentional — DTOs deliberately expose a subset of entity fields
 @Mapper(
         componentModel = MappingConstants.ComponentModel.SPRING,
         unmappedTargetPolicy = ReportingPolicy.IGNORE
@@ -33,7 +32,7 @@ public interface GeoFenceMapper {
 
     @SuppressWarnings("squid:S1168")
     default List<CoordinateDto> polygonToCoordinates(Polygon polygon) {
-    if (polygon == null) return null; // null is intentional — MapStruct uses null to skip field mapping
+    if (polygon == null) return null;
     return Arrays.stream(polygon.getCoordinates())
             .map(cord -> new CoordinateDto(cord.y, cord.x)).toList();
     }

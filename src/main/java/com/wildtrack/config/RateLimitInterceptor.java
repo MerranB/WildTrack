@@ -18,12 +18,13 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class RateLimitInterceptor implements HandlerInterceptor {
 
-    private static final int STANDARD_LIMIT = 2000;
+    private static final int STANDARD_LIMIT = 200;
     private static final int UPDATE_DATABASE_LIMIT = 2;
     private static final int NATURAL_QUERY_LIMIT = 2;
     private static final int DEMO_LIMIT = 2;
+    private static final int TILE_LIMIT = 300;
 
-  // Never evicted — acceptable at this scale (single ECS instance, minimal unique visitors)
+  // Never evicted, acceptable at this scale (single ECS instance, minimal unique visitors)
     private final ConcurrentHashMap<String, Bucket> buckets = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper;
 
@@ -47,6 +48,10 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         else if (apiCalled.contains("demo")){
             key = ip + ":" + ("DEMO_LIMIT");
             limit = DEMO_LIMIT;
+        }
+        else if (apiCalled.contains("tile")){
+            key = ip + ":" + ("TILE_LIMIT");
+            limit = TILE_LIMIT;
         }
         else{
             key = ip + ":" + ("STANDARD_LIMIT");

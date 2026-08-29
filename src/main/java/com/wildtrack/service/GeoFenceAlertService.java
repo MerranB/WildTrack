@@ -35,7 +35,8 @@ public class GeoFenceAlertService {
                 geofence.getLastAlertSent().isBefore(LocalDateTime.now().minusDays(3))){
 
                     emailService.sendSimpleMail( new EmailDetail(geofence.getEmail(),
-                    geofence.getName() + " animal count has changed to " + currentAnimalCount,
+                    geofence.getName() + " animal count has changed from " + geofence.getLastAnimalCount() +
+                            " to " + currentAnimalCount,
                     "GeoFence " + geofence.getName() + " has been triggered!",
                     null));
 

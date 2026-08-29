@@ -3,6 +3,8 @@ package com.wildtrack.exception;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.io.IOException;
+import org.apache.catalina.connector.ClientAbortException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class GlobalExceptionHandlerTest {
@@ -60,6 +63,12 @@ class GlobalExceptionHandlerTest {
         @GetMapping("/email-delivery-error")
         public void throwEmailDelivery() {
             throw new EmailDeliveryException("Failed to send email", new Exception("cause")); }
+        @GetMapping("/client-abort")
+        public void throwClientAbort() throws ClientAbortException {
+            throw new ClientAbortException(new IOException("An established connection was aborted")); }
+        @GetMapping(value = "/tile-client-abort", produces = "application/vnd.mapbox-vector-tile")
+        public byte[] throwClientAbortOnTile() throws ClientAbortException {
+            throw new ClientAbortException(new IOException("An established connection was aborted")); }
     }
     static class ValidationRequest {
         @NotBlank
@@ -108,6 +117,20 @@ class GlobalExceptionHandlerTest {
     void emailDeliveryException_returns502() throws Exception {
         mockMvc.perform(get("/email-delivery-error"))
                 .andExpect(status().isBadGateway());
+    }
+
+    @Test
+    void clientAbortException_isSwallowedRatherThanReturning500() throws Exception {
+        mockMvc.perform(get("/client-abort"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(""));
+    }
+
+    @Test
+    void clientAbortOnTileEndpoint_doesNotFailWritingProblemDetail() throws Exception {
+        mockMvc.perform(get("/tile-client-abort"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(""));
     }
 
     @Test
