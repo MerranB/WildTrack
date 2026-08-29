@@ -1,6 +1,7 @@
 package com.wildtrack.exception;
 
 import jakarta.validation.ConstraintViolationException;
+import org.apache.catalina.connector.ClientAbortException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -36,6 +37,11 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST, "Validation failed");
         problem.setProperty("errors", fieldErrors);
         return problem;
+    }
+
+    @ExceptionHandler(ClientAbortException.class)
+    public void handleClientAbort(ClientAbortException ex) {
+        log.debug("Client disconnected before the response was sent: {}", ex.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

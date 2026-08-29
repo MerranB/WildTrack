@@ -17,3 +17,6 @@ scheduler:
     updateDatabase: "0 30 21 * * ?"
     geoFence: "0 30 23 * * ?"
   enabled: false
+
+cors:
+  allowed-origins: https://merranb.github.io,https://thewildtrack.org

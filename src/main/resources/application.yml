@@ -52,6 +52,14 @@ movebank:
   study-ids:
     - 19186107
     - 1073231887
+    - 2970193504
+tiles:
+  raw-min-zoom: 11
+  cells-per-tile: 64
+
+hotspots:
+  grid-size: 10
+  max-cells: 30
 
 server:
   port: 8080
@@ -69,3 +77,6 @@ logging:
     org.hibernate.orm.jdbc.bind: WARN
   pattern:
     console: "%d{HH:mm:ss.SSS} [%t] %-5level %logger{36}.%M -- %msg%n"
+
+cors:
+  allowed-origins: http://localhost:5173,https://merranb.github.io,https://thewildtrack.org

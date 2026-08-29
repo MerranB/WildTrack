@@ -4,163 +4,138 @@ import com.opencsv.bean.CsvToBeanBuilder;
 import com.wildtrack.client.MovebankClient;
 import com.wildtrack.client.MovebankHeaderNormalizer;
 import com.wildtrack.client.dto.MovebankEventDto;
-import com.wildtrack.mapper.MovebankEventMapper;
-import com.wildtrack.model.MovebankEvent;
-import com.wildtrack.repository.MovebankEventRepository;
+import com.wildtrack.repository.MovebankEventBatchWriter;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.Reader;
-import java.io.StringReader;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class MovebankStudyIngestor {
 
-    public enum Result { FULL_SUCCESS, PARTIAL_SUCCESS, FAILURE, NO_VALID_DATA; }
-
+    private static final int MAX_INVALID_WARNINGS = 20;
+    public enum Result {FULL_SUCCESS, PARTIAL_SUCCESS, FAILURE, NO_VALID_DATA}
+    private static final int WINDOW_SIZE = 20_000;
     private static final int BATCH_COUNT = 20;
     private static final Logger log = LoggerFactory.getLogger(MovebankStudyIngestor.class);
     private static final String BOM = "\uFEFF";
-    private final MovebankClient movebankclient;
+
+    private final MovebankClient movebankClient;
     private final MovebankHeaderNormalizer movebankHeaderNormalizer;
-    private final MovebankEventRepository movebankEventRepository;
-    private final MovebankEventMapper movebankEventMapper;
+    private final MovebankEventBatchWriter movebankEventBatchWriter;
 
     public Result ingestStudy(Long studyId) {
 
-        String totalData = movebankclient.getData(studyId);
-        if (totalData == null || totalData.isEmpty()) {
+        Path csv = movebankClient.getData(studyId);
+        if (csv == null) {
             log.error("Study {}: data failed to be retrieved", studyId);
             return Result.FAILURE;
         }
 
-        totalData = normalizeHeaders(totalData);
+        IngestCounters counters = new IngestCounters();
 
-        List<MovebankEventDto> data = new CsvToBeanBuilder<MovebankEventDto>(Reader.of(totalData))
-                .withIgnoreEmptyLine(true)
-                .withType(MovebankEventDto.class)
-                .build()
-                .parse();
+        try (InputStream body = Files.newInputStream(csv);
+             Reader reader = normalizedReader(studyId, body)) {
 
-        for (int i = 0; i < data.size(); i++) {
-            List<String> nulls = checkForNulls(data.get(i));
-            if (!nulls.isEmpty()) {
-                log.warn("Study {} data point {} is missing fields: {}", studyId, i, nulls);
+            Iterator<MovebankEventDto> rows = new CsvToBeanBuilder<MovebankEventDto>(reader)
+                    .withIgnoreEmptyLine(true)
+                    .withType(MovebankEventDto.class)
+                    .build()
+                    .iterator();
+
+            List<MovebankEventDto> window = new ArrayList<>(WINDOW_SIZE);
+
+            while (rows.hasNext()) {
+                MovebankEventDto row = rows.next();
+                int rowNumber = counters.parsed.incrementAndGet();
+
+                List<String> nulls = checkForNulls(row);
+                if (!nulls.isEmpty()) {
+                    if (counters.dropped.incrementAndGet() <= MAX_INVALID_WARNINGS) {
+                        log.warn("Study {} data point {} is missing fields: {}", studyId, rowNumber, nulls);
+                    }
+                    continue;
+                }
+
+                window.add(row);
+
+                if (window.size() >= WINDOW_SIZE) {
+                    processBatches(window, studyId, counters);
+                    window = new ArrayList<>(WINDOW_SIZE);
+                }
+            }
+
+            if (!window.isEmpty()) {
+                processBatches(window, studyId, counters);
+            }
+
+        } catch (IOException e) {
+            log.error("Study {}: failed reading downloaded CSV", studyId, e);
+            return Result.FAILURE;
+        } finally {
+            try {
+                Files.deleteIfExists(csv);
+            } catch (IOException e) {
+                log.warn("Study {}: could not delete temp file {}", studyId, csv, e);
             }
         }
-
-        data = data.stream()
-                .filter(e ->
-                        e.getTimestamp() != null
-                        && e.getLocationLat() != null && e.getLocationLong() != null
-                        && e.getTagId() != null && !e.getTagId().isBlank()
-                        && e.getIndividualId() != null && !e.getIndividualId().isBlank())
-                .toList();
-
-        if(data.isEmpty()){
-            return Result.NO_VALID_DATA;
-        }
-        return processBatches(data, studyId);
+        counters.logSummary(studyId);
+        return classify(counters);
     }
 
-    private String normalizeHeaders(String totalData) {
-        if (totalData.startsWith(BOM)) {
-            totalData = totalData.substring(BOM.length());
-        }
+    private void processBatches(List<MovebankEventDto> data, Long studyId,
+                                IngestCounters counters) {
 
-        try (BufferedReader reader = new BufferedReader(new StringReader(totalData))) {
-            String firstLine = reader.readLine();
-            log.debug("Header line: {}", firstLine);
-            firstLine = movebankHeaderNormalizer.normalizeHeaders(firstLine);
-            totalData = firstLine + "\n" + reader.lines().collect(Collectors.joining("\n"));
-        } catch (IOException e) {
-            log.error("error: ", e);
-        }
-        return totalData;
-    }
-
-    private Result processBatches(List<MovebankEventDto> data, Long studyId) {
-        AtomicInteger failedRecords = new AtomicInteger();
-        AtomicInteger failedThreads = new AtomicInteger();
         int batchSize = (data.size() < BATCH_COUNT) ? data.size() : (data.size() / BATCH_COUNT);
-        AtomicInteger saved = new AtomicInteger();
-        AtomicInteger dups = new AtomicInteger();
         List<Future<?>> batchResults = new ArrayList<>();
 
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             for (int i = 0; i < data.size(); i += batchSize) {
                 int batchStart = i;
                 batchResults.add(executor.submit(() -> {
-                            List<MovebankEventDto> batch = data.subList(batchStart, Math.min(batchStart + batchSize, data.size()));
-                            processBatch(batch, saved, dups, failedRecords, studyId);
-                    }));
+                    List<MovebankEventDto> batch = data.subList(batchStart, Math.min(batchStart + batchSize, data.size()));
+                    processBatch(batch, studyId, counters);
+                }));
             }
         }
 
-        for (int i = 0; i < batchResults.size(); i++) {
+        for (Future<?> batchResult : batchResults) {
             try {
-                batchResults.get(i).get();
+                batchResult.get();
             } catch (ExecutionException e) {
-                log.error("StudyId {} batch died at {} ", studyId, i * batchSize, e);
-                failedThreads.getAndIncrement();
+                log.error("StudyId {} batch died", studyId, e);
+                counters.failedThreads.incrementAndGet();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 log.error("StudyId {} interrupted", studyId, e);
-                failedThreads.getAndIncrement();
+                counters.failedThreads.incrementAndGet();
                 break;
             }
         }
-
-        log.info("Ingestion complete for {}: {} records parsed, {} saved, {} skipped as duplicates, and {} records and {} threads failed",
-                studyId, data.size(), saved, dups, failedRecords.get(), failedThreads.get());
-
-        if (failedRecords.get() == 0 && failedThreads.get() == 0) {
-            return Result.FULL_SUCCESS;
-        }
-        // 80% success threshold — if more than 20% of records fail, it likely indicates
-        // a systemic issue (e.g. DB connectivity) rather than isolated record failures.
-        else if (((double) (data.size() - failedRecords.get()) / data.size() >= .8)
-        && failedThreads.get() < 1) {
-            return Result.PARTIAL_SUCCESS;
-        } else {
-            return Result.FAILURE;
-        }
     }
 
-    private void processBatch(List<MovebankEventDto> batch, AtomicInteger saved, AtomicInteger dups, AtomicInteger failedRecords
-    , Long studyId) {
-        for (MovebankEventDto dataPointDTO : batch) {
-            try {
-                MovebankEvent dataPoint = movebankEventMapper.toEntity(dataPointDTO);
-                if (!movebankEventRepository.existsByTimestampAndLocationAndIndividualIdAndTagId(
-                        dataPoint.getTimestamp(), dataPoint.getLocation(),
-                        dataPoint.getIndividualId(), dataPoint.getTagId())) {
-                    movebankEventRepository.save(dataPoint);
-                    saved.getAndIncrement();
-                } else {
-                    dups.getAndIncrement();
-                }
-            } catch (DataIntegrityViolationException _) {
-                dups.getAndIncrement();
-            }
-            catch (Exception e) {
-                failedRecords.getAndIncrement();
-                log.error("Study {} record failed (tag {}, timestamp {})",
-                        studyId, dataPointDTO.getTagId(), dataPointDTO.getTimestamp(), e);
-
-            }
+    private void processBatch(List<MovebankEventDto> batch, Long studyId, IngestCounters counters) {
+        try {
+            int inserted = movebankEventBatchWriter.insertBatch(batch);
+            counters.saved.addAndGet(inserted);
+            counters.dups.addAndGet(batch.size() - inserted);
+        } catch (Exception e) {
+            counters.failedRecords.addAndGet(batch.size());
+            log.error("Study {} insert batch of {} failed (first tag {}, timestamp {})",
+                    studyId, batch.size(), batch.getFirst().getTagId(),
+                    batch.getFirst().getTimestamp(), e);
         }
     }
 
@@ -182,5 +157,66 @@ public class MovebankStudyIngestor {
             nullVariables.add("tag_id");
         }
         return nullVariables;
+    }
+
+    private Reader normalizedReader(Long studyId, InputStream body) throws IOException {
+        ByteArrayOutputStream headerBytes = new ByteArrayOutputStream();
+        int b;
+        while ((b = body.read()) != -1 && b != '\n') {
+            headerBytes.write(b);
+        }
+
+        String header = headerBytes.toString(StandardCharsets.UTF_8).replace("\r", "");
+        if (header.startsWith(BOM)) {
+            header = header.substring(BOM.length());
+        }
+        if (header.isBlank()) {
+            throw new IOException("Study " + studyId + ": downloaded CSV was empty");
+        }
+
+        log.debug("Study {} header line: {}", studyId, header);
+        String normalized = movebankHeaderNormalizer.normalizeHeaders(header) + "\n";
+
+        return new InputStreamReader(
+                new SequenceInputStream(
+                        new ByteArrayInputStream(normalized.getBytes(StandardCharsets.UTF_8)),
+                        body),
+                StandardCharsets.UTF_8);
+    }
+
+    Result classify(IngestCounters counters) {
+        int usable = counters.usable();
+        if (usable == 0) {
+            return Result.NO_VALID_DATA;
+        }
+        if (counters.failedRecords.get() == 0 && counters.failedThreads.get() == 0) {
+            return Result.FULL_SUCCESS;
+        }
+        if (((double) (usable - counters.failedRecords.get()) / usable >= .8)
+                && counters.failedThreads.get() == 0) {
+            return Result.PARTIAL_SUCCESS;
+        }
+        return Result.FAILURE;
+    }
+
+    static final class IngestCounters {
+        final AtomicInteger parsed = new AtomicInteger();
+        final AtomicInteger dropped = new AtomicInteger();
+        final AtomicInteger saved = new AtomicInteger();
+        final AtomicInteger dups = new AtomicInteger();
+        final AtomicInteger failedRecords = new AtomicInteger();
+        final AtomicInteger failedThreads = new AtomicInteger();
+
+        int usable() {
+            return parsed.get() - dropped.get();
+        }
+
+        void logSummary(Long studyId) {
+
+            log.info("Ingestion complete for {}: {} parsed, {} dropped as invalid, {} saved, "
+                            + "{} skipped as duplicates, {} records and {} threads failed",
+                    studyId, parsed.get(), dropped.get(), saved.get(), dups.get(),
+                    failedRecords.get(), failedThreads.get());
+        }
     }
 }

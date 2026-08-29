@@ -8,6 +8,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,10 +31,18 @@ class MovebankClientTest {
     }
 
     @Test
-    void getData_success() {
+    void getData_success() throws IOException {
         server.expect(requestTo(containsString("study_id=19186107")))
-                .andRespond(withSuccess("timestamp", MediaType.TEXT_PLAIN));
-        assertThat(movebankClient.getData(19186107L)).contains("timestamp");
+                .andRespond(withSuccess("timestamp,location_lat", MediaType.TEXT_PLAIN));
+
+        Path downloaded = movebankClient.getData(19186107L);
+
+        try {
+            assertThat(downloaded).exists();
+            assertThat(Files.readString(downloaded)).contains("timestamp");
+        } finally {
+            Files.deleteIfExists(downloaded);
+        }
     }
 
     @Test

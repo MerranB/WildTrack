@@ -2,6 +2,7 @@ package com.wildtrack.service;
 
 import com.wildtrack.client.dto.MovebankEventDto;
 import com.wildtrack.config.MovebankProperties;
+import com.wildtrack.dto.Hotspot;
 import com.wildtrack.exception.ResourceNotFoundException;
 import com.wildtrack.mapper.MovebankEventMapper;
 import com.wildtrack.model.MovebankEvent;
@@ -17,18 +18,17 @@ import org.locationtech.jts.geom.PrecisionModel;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-
+import org.springframework.data.domain.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.springframework.dao.DataAccessResourceFailureException;
+import org.springframework.test.util.ReflectionTestUtils;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -54,9 +54,19 @@ class MovebankEventServiceTest {
 
     private GeometryFactory geometryFactory;
 
+    private static final int RAW_MIN_ZOOM = 11;
+    private static final int CELLS_PER_TILE = 64;
+    private static final double GRID_SIZE = 10.0;
+    private static final int MAX_CELLS = 30;
+
     @BeforeEach
     void setUpPoint() {
         geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
+
+        ReflectionTestUtils.setField(movebankEventService, "rawTileMinZoom", RAW_MIN_ZOOM);
+        ReflectionTestUtils.setField(movebankEventService, "cellsPerTile", CELLS_PER_TILE);
+        ReflectionTestUtils.setField(movebankEventService, "hotspotGridSize", GRID_SIZE);
+        ReflectionTestUtils.setField(movebankEventService, "hotspotMaxCells", MAX_CELLS);
     }
 
     @Test
@@ -118,19 +128,19 @@ class MovebankEventServiceTest {
     }
 
     @Test
-    void findAll_returnsPageOfDtos() {
+    void findAll_returnsSliceOfDtos() {
         when(movebankEventMapper.toDto(any())).thenReturn(new MovebankEventDto(
                 LocalDateTime.of(2011, 1, 11, 1, 1, 11, 111000000),
                 11.1111d, -11.1111d, "11111111", "111111111"
         ));
         Point location = geometryFactory.createPoint(new Coordinate(12.1212d, -12.1212d));
-        when(movebankEventRepository.findAll(any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(new MovebankEvent(
+        when(movebankEventRepository.findAllBy(any(Pageable.class)))
+                .thenReturn(new SliceImpl<>(List.of(new MovebankEvent(
                         LocalDateTime.of(2011, 1, 11, 1, 1, 11, 111000000),
                         location, "11111111", "111111111"
                 ))));
 
-        Page<MovebankEventDto> result = movebankEventService.findAll(Pageable.unpaged());
+        Slice<MovebankEventDto> result = movebankEventService.findAll(Pageable.unpaged());
 
         assertThat(result.getContent()).hasSize(1);
         assertThat(result.getContent().getFirst().getTimestamp())
@@ -234,5 +244,129 @@ class MovebankEventServiceTest {
     void delete_throwsWhenNotFound() {
         when(movebankEventRepository.existsById(99L)).thenReturn(false);
         assertThrows(ResourceNotFoundException.class, () -> movebankEventService.delete(99L));
+    }
+
+    @Test
+    void getTileByZ_usesRawQuery_atRawMinZoom() {
+        when(movebankEventRepository.findRawTile(RAW_MIN_ZOOM, 3, 4)).thenReturn(new byte[]{1});
+
+        byte[] tile = movebankEventService.getTileByZ(RAW_MIN_ZOOM, 3, 4);
+
+        assertThat(tile).containsExactly(1);
+        verify(movebankEventRepository).findRawTile(RAW_MIN_ZOOM, 3, 4);
+        verify(movebankEventRepository, never()).findClusteredTile(anyInt(), anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    void getTileByZ_usesRawQuery_aboveRawMinZoom() {
+        when(movebankEventRepository.findRawTile(RAW_MIN_ZOOM + 3, 3, 4)).thenReturn(new byte[]{1});
+
+        movebankEventService.getTileByZ(RAW_MIN_ZOOM + 3, 3, 4);
+
+        verify(movebankEventRepository).findRawTile(RAW_MIN_ZOOM + 3, 3, 4);
+        verify(movebankEventRepository, never()).findClusteredTile(anyInt(), anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    void getTileByZ_usesClusteredQueryWithConfiguredCellCount_belowRawMinZoom() {
+        when(movebankEventRepository.findClusteredTile(RAW_MIN_ZOOM - 1, 3, 4, CELLS_PER_TILE))
+                .thenReturn(new byte[]{2});
+
+        byte[] tile = movebankEventService.getTileByZ(RAW_MIN_ZOOM - 1, 3, 4);
+
+        assertThat(tile).containsExactly(2);
+        verify(movebankEventRepository).findClusteredTile(RAW_MIN_ZOOM - 1, 3, 4, CELLS_PER_TILE);
+        verify(movebankEventRepository, never()).findRawTile(anyInt(), anyInt(), anyInt());
+    }
+
+    @Test
+    void getTileByZ_usesClusteredQuery_atWorldZoom() {
+        when(movebankEventRepository.findClusteredTile(0, 0, 0, CELLS_PER_TILE)).thenReturn(new byte[]{2});
+
+        movebankEventService.getTileByZ(0, 0, 0);
+
+        verify(movebankEventRepository).findClusteredTile(0, 0, 0, CELLS_PER_TILE);
+    }
+
+    @Test
+    void getTileByZ_passesEmptyTileThroughForEmptyRegion() {
+        when(movebankEventRepository.findRawTile(RAW_MIN_ZOOM, 0, 0)).thenReturn(new byte[0]);
+
+        assertThat(movebankEventService.getTileByZ(RAW_MIN_ZOOM, 0, 0)).isEmpty();
+    }
+
+    @Test
+    void getTileByZ_passesNullThrough() {
+        when(movebankEventRepository.findRawTile(RAW_MIN_ZOOM, 0, 0)).thenReturn(null);
+
+        assertThat(movebankEventService.getTileByZ(RAW_MIN_ZOOM, 0, 0)).isNull();
+    }
+
+    @Test
+    void hotspots_mapsProjectionsToDtosWithConfiguredGrid() {
+        MovebankEventRepository.HotspotProjection first = projection(37.41, -6.43, 2538111L);
+        MovebankEventRepository.HotspotProjection second = projection(33.19, -117.52, 38050L);
+
+        when(movebankEventRepository.findHotspots(GRID_SIZE, MAX_CELLS))
+                .thenReturn(List.of(first, second));
+
+        List<Hotspot> result = movebankEventService.hotspots();
+
+        assertThat(result).containsExactly(
+                new Hotspot(37.41, -6.43, 2538111L),
+                new Hotspot(33.19, -117.52, 38050L));
+        verify(movebankEventRepository).findHotspots(GRID_SIZE, MAX_CELLS);
+    }
+
+    @Test
+    void hotspots_returnsEmptyList_whenNoData() {
+        when(movebankEventRepository.findHotspots(GRID_SIZE, MAX_CELLS)).thenReturn(List.of());
+
+        assertThat(movebankEventService.hotspots()).isEmpty();
+    }
+
+    @Test
+    void getTileByZ_propagatesRepositoryFailure_onRawTile() {
+        when(movebankEventRepository.findRawTile(RAW_MIN_ZOOM, 1, 1))
+                .thenThrow(new DataAccessResourceFailureException("connection lost"));
+
+        assertThrows(DataAccessResourceFailureException.class,
+                () -> movebankEventService.getTileByZ(RAW_MIN_ZOOM, 1, 1));
+    }
+
+    @Test
+    void getTileByZ_propagatesRepositoryFailure_onClusteredTile() {
+        when(movebankEventRepository.findClusteredTile(0, 0, 0, CELLS_PER_TILE))
+                .thenThrow(new DataAccessResourceFailureException("connection lost"));
+
+        assertThrows(DataAccessResourceFailureException.class,
+                () -> movebankEventService.getTileByZ(0, 0, 0));
+    }
+
+    @Test
+    void hotspots_propagatesRepositoryFailure() {
+        when(movebankEventRepository.findHotspots(GRID_SIZE, MAX_CELLS))
+                .thenThrow(new DataAccessResourceFailureException("connection lost"));
+
+        assertThrows(DataAccessResourceFailureException.class, () -> movebankEventService.hotspots());
+    }
+
+    @Test
+    void hotspots_throwsIfProjectionReturnsNulls() {
+        MovebankEventRepository.HotspotProjection broken =
+                org.mockito.Mockito.mock(MovebankEventRepository.HotspotProjection.class);
+        when(broken.getLat()).thenReturn(null);
+        when(movebankEventRepository.findHotspots(GRID_SIZE, MAX_CELLS)).thenReturn(List.of(broken));
+
+        assertThrows(NullPointerException.class, () -> movebankEventService.hotspots());
+    }
+
+    private MovebankEventRepository.HotspotProjection projection(double lat, double lon, long total) {
+        MovebankEventRepository.HotspotProjection cell =
+                org.mockito.Mockito.mock(MovebankEventRepository.HotspotProjection.class);
+        when(cell.getLat()).thenReturn(lat);
+        when(cell.getLon()).thenReturn(lon);
+        when(cell.getTotal()).thenReturn(total);
+        return cell;
     }
 }

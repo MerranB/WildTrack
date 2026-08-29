@@ -1,6 +1,7 @@
 package com.wildtrack.controller;
 
 import com.wildtrack.client.dto.MovebankEventDto;
+import com.wildtrack.dto.Hotspot;
 import com.wildtrack.model.ApiResponse;
 import com.wildtrack.service.MovebankEventService;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -16,6 +17,9 @@ import com.wildtrack.dto.BoundingBoxRequest;
 import com.wildtrack.dto.CoordinateRangeRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.data.domain.Slice;
+import java.util.List;
+
 
 @RestController
 @RequestMapping("/api/v1/events")
@@ -25,9 +29,27 @@ public class MovebankController {
 
     private final MovebankEventService movebankEventService;
 
+    @Operation(summary = "Get telemetry events by z,x,y", description = "Returns  wildlife telemetry events in a tile")
+    @GetMapping(value = "/tiles/{z}/{x}/{y}.mvt",
+            produces = "application/vnd.mapbox-vector-tile")
+    public ResponseEntity<byte[]> getTileByZ(@PathVariable int z,
+                                             @PathVariable int x,
+                                             @PathVariable int y) {
+
+        if (z < 0 || z > 22 || x < 0 || y < 0 || x >= (1 << z) || y >= (1 << z)) {
+            return ResponseEntity.badRequest().build();
+        }
+        byte[] tile = movebankEventService.getTileByZ(z, x, y);
+        if (tile == null || tile.length == 0) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(tile);
+    }
+
+
     @Operation(summary = "Get all telemetry events", description = "Returns all wildlife telemetry events in the database, paginated.")
     @GetMapping("/all")
-    public ResponseEntity<Page<MovebankEventDto>> getAll(@ParameterObject Pageable pageable) {
+    public ResponseEntity<Slice<MovebankEventDto>> getAll(@ParameterObject Pageable pageable) {
         return ResponseEntity.ok(movebankEventService.findAll(pageable));
     }
 
@@ -82,5 +104,12 @@ public class MovebankController {
     public ResponseEntity<Page<MovebankEventDto>> allDataPointsByRange(@Valid @ModelAttribute CoordinateRangeRequest request,
         @ParameterObject Pageable pageable) {
         return ResponseEntity.ok(movebankEventService.allDataPointsByRange(request.lat(), request.lon(), request.range(), pageable));
+    }
+
+    @Operation(summary = "Data hotspots",
+            description = "Provides where the data is in the UI.")
+    @GetMapping("/hotspots")
+    public ResponseEntity<List<Hotspot>> getHotspots() {
+        return ResponseEntity.ok(movebankEventService.hotspots());
     }
 }
