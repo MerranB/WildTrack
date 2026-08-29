@@ -9,6 +9,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.security.test.context.support.WithMockUser;
+import com.wildtrack.support.WithSecurityConfig;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.data.domain.SliceImpl;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -32,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(MovebankController.class)
+@WithSecurityConfig
 class MovebankControllerTest {
 
     private static final String EVENTS_URL = "/api/v1/events/all";
@@ -94,6 +97,7 @@ class MovebankControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void updateDatabase_returns_non200() throws Exception {
         when(movebankService.updateDatabase())
                 .thenThrow(new RuntimeException(String.valueOf(500)));
@@ -103,6 +107,7 @@ class MovebankControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void updateDatabase_allStudiesFullSuccess_returns200() throws Exception {
         when(movebankService.updateDatabase())
                 .thenReturn("FULL_SUCCESS for 19186107\nFULL_SUCCESS for 1073231887\n");
@@ -113,6 +118,7 @@ class MovebankControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void updateDatabase_partialSuccess_returns207() throws Exception {
         when(movebankService.updateDatabase())
                 .thenReturn("PARTIAL_SUCCESS for 19186107\n");
@@ -123,6 +129,7 @@ class MovebankControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void updateDatabase_oneStudySucceedsOneHasNoValidData_returns207() throws Exception {
         when(movebankService.updateDatabase())
                 .thenReturn("FULL_SUCCESS for 19186107\nNO_VALID_DATA for 1073231887\n");
@@ -133,6 +140,7 @@ class MovebankControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void updateDatabase_noStudyHasValidData_returns422() throws Exception {
         when(movebankService.updateDatabase())
                 .thenReturn("NO_VALID_DATA for 19186107\nNO_VALID_DATA for 1073231887\n");
@@ -143,6 +151,7 @@ class MovebankControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void updateDatabase_failure_returns500() throws Exception {
         when(movebankService.updateDatabase())
                 .thenReturn("FAILURE for 19186107\n");
@@ -153,6 +162,7 @@ class MovebankControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void updateDatabase_noValidDataAlongsideFailure_returns500() throws Exception {
         when(movebankService.updateDatabase())
                 .thenReturn("NO_VALID_DATA for 19186107\nFAILURE for 1073231887\n");
@@ -162,6 +172,7 @@ class MovebankControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void updateDatabase_studyThrew_returns500() throws Exception {
         when(movebankService.updateDatabase())
                 .thenReturn("Study 19186107 FAILED - Connection refused\n");
@@ -172,6 +183,7 @@ class MovebankControllerTest {
     }
 
     @Test
+    @WithMockUser(roles = "ADMIN")
     void updateDatabase_noStudyIdsConfigured_returns500() throws Exception {
         when(movebankService.updateDatabase())
                 .thenReturn("FAILED - No study IDs configured");
@@ -345,5 +357,22 @@ class MovebankControllerTest {
                         throw new AssertionError("A failed tile query must not be reported as 200");
                     }
                 });
+    }
+
+    @Test
+    void updateDatabase_returnsUnauthorized_whenNoCredentialsSupplied() throws Exception {
+        mockMvc.perform(post(EVENTS_UPDATE_URL))
+                .andExpect(status().isUnauthorized());
+
+        verify(movebankService, never()).updateDatabase();
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void updateDatabase_returnsForbidden_whenAuthenticatedUserIsNotAdmin() throws Exception {
+        mockMvc.perform(post(EVENTS_UPDATE_URL))
+                .andExpect(status().isForbidden());
+
+        verify(movebankService, never()).updateDatabase();
     }
 }
