@@ -56,6 +56,9 @@ wildtrack:
     lockout:
       max-attempts: 5
       duration-minutes: 60
+  verification:
+    code-expiry-minutes: 15
+    max-attempts: 5
   study-ids:
     - 19186107
     - 1073231887
@@ -84,6 +87,5 @@ logging:
     org.hibernate.orm.jdbc.bind: WARN
   pattern:
     console: "%d{HH:mm:ss.SSS} [%t] %-5level %logger{36}.%M -- %msg%n"
-
 cors:
   allowed-origins: http://localhost:5173,https://merranb.github.io,https://thewildtrack.org

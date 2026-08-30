@@ -2,6 +2,8 @@ package com.wildtrack.demo;
 
 import com.wildtrack.dto.GeoFenceDto;
 import com.wildtrack.model.ApiResponse;
+import com.wildtrack.model.VerificationPurpose;
+import com.wildtrack.service.EmailVerificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -17,7 +19,7 @@ import jakarta.validation.Valid;
 @Tag(name = "Demo", description = "Demonstrates the geo-fence alert feature with simulated data")
 public class DemoController {
 
-    private final DemoService demoService;
+    private final EmailVerificationService emailVerificationService;
 
     @Operation(
             summary = "Trigger a geo-fence alert demo",
@@ -67,6 +69,11 @@ public class DemoController {
     )
     @PostMapping
     public ResponseEntity<ApiResponse> testGeoFenceDemo(@Valid @RequestBody GeoFenceDto dto) {
-        return ResponseEntity.ok(new ApiResponse(demoService.testGeoFenceDemo(dto)));
+        emailVerificationService.startVerification(
+                dto.getEmail(), VerificationPurpose.DEMO, dto);
+
+        return ResponseEntity.accepted().body(new ApiResponse(
+                "A 6 digit code has been sent to " + dto.getEmail()
+                        + ". Add the code to POST /api/v1/verify/demo to run the alert demo."));
     }
 }

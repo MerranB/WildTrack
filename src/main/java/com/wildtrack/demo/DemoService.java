@@ -22,7 +22,7 @@ public class DemoService {
     private final MovebankEventMapper movebankEventMapper;
     private final GeoFenceScheduler geoFenceScheduler;
 
-    String testGeoFenceDemo(GeoFenceDto dto){
+    public String runDemo(GeoFenceDto dto){
 
         GeoFenceDto savedFence = geoFenceService.create(dto);
         savedFence.setLastAlertSent(LocalDateTime.now().minusDays(4));

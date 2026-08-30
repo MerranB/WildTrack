@@ -96,5 +96,8 @@ public class GlobalExceptionHandler {
         log.debug("Login rejected: {}", ex.getMessage());
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Invalid username or password.");
     }
-
+    @ExceptionHandler(VerificationCodeException.class)
+    public ProblemDetail handleVerificationFailure(VerificationCodeException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
 }
