@@ -63,7 +63,7 @@ public class EmailVerificationService {
         log.info("Verification code issued for purpose {}", purpose);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = VerificationCodeException.class)
     public <T> T consume(String email, String code, VerificationPurpose purpose, Class<T> payloadType) {
         EmailVerification verification = emailVerificationRepository
                 .findFirstByEmailAndPurposeOrderByCreatedAtDesc(email, purpose)
@@ -88,7 +88,7 @@ public class EmailVerificationService {
 
             emailVerificationRepository.save(verification);
             throw new VerificationCodeException(
-                    "Incorrect code. " + remaining + " attempt(s) remaining before it is cancelled.");
+                    "Incorrect code. " + remaining + " attempt(s) remaining.");
         }
 
         T payload = deserialize(verification.getPayload(), payloadType);
