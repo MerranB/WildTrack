@@ -2,6 +2,8 @@ package com.wildtrack.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wildtrack.config.RateLimitInterceptor;
+import com.wildtrack.model.VerificationPurpose;
+import com.wildtrack.service.EmailVerificationService;
 import com.wildtrack.dto.CoordinateDto;
 import com.wildtrack.dto.GeoFenceDto;
 import com.wildtrack.exception.ResourceNotFoundException;
@@ -19,6 +21,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -38,6 +41,7 @@ class GeoFenceControllerTest {
 
     private static final String TEST_FENCE_NAME = "Test Fence";
     private static final String TEST_USERNAME = "testuser";
+    private static final String TEST_EMAIL = "test@email.com";
     private static final String GEOFENCE_URL = "/api/v1/geoFence";
     private static final String GEOFENCE_BY_ID_URL = "/api/v1/geoFence/1";
     private static final String GEOFENCE_NOT_FOUND_URL = "/api/v1/geoFence/99";
@@ -50,6 +54,9 @@ class GeoFenceControllerTest {
 
     @MockitoBean
     private GeoFenceService geoFenceService;
+
+    @MockitoBean
+    private EmailVerificationService emailVerificationService;
 
     @MockitoBean
     private RateLimitInterceptor rateLimitInterceptor;
@@ -69,7 +76,7 @@ class GeoFenceControllerTest {
                         new CoordinateDto(11.0, 20.0),
                         new CoordinateDto(10.0, 20.0)
                 ),
-                "test@email.com",
+                TEST_EMAIL,
                 TEST_USERNAME, 0
         );
     }
@@ -102,14 +109,17 @@ class GeoFenceControllerTest {
     }
 
     @Test
-    void create_returnsCreated() throws Exception {
-        when(geoFenceService.create(any())).thenReturn(sampleDto());
-
+    void create_returnsAccepted_andDoesNotCreateTheFenceYet() throws Exception {
         mockMvc.perform(post(GEOFENCE_URL)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(sampleDto())))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value(TEST_FENCE_NAME));
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.message").value(containsString("6 digit code")));
+
+        verify(emailVerificationService)
+                .startVerification(eq(TEST_EMAIL), eq(VerificationPurpose.GEO_FENCE), any());
+        // The whole point of deferring: an unconfirmed address must not reach the database.
+        verify(geoFenceService, never()).create(any());
     }
 
     @Test

@@ -61,10 +61,10 @@ class DemoServiceTest {
     }
 
     @Test
-    void testGeoFenceDemo_createsGeofenceAndTriggersScheduler() {
+    void runDemo_createsGeofenceAndTriggersScheduler() {
         setupMocks(1L);
 
-        demoService.testGeoFenceDemo(validDto());
+        demoService.runDemo(validDto());
 
         verify(geoFenceService).create(any());
         verify(geoFenceService).update(eq(1L), any());
@@ -73,11 +73,11 @@ class DemoServiceTest {
     }
 
     @Test
-    void testGeoFenceDemo_savesEventAtCentroid() {
+    void runDemo_savesEventAtCentroid() {
         setupMocks(1L);
         ArgumentCaptor<MovebankEventDto> captor = ArgumentCaptor.forClass(MovebankEventDto.class);
 
-        demoService.testGeoFenceDemo(validDto());
+        demoService.runDemo(validDto());
 
         verify(movebankEventMapper).toEntity(captor.capture());
         MovebankEventDto captured = captor.getValue();

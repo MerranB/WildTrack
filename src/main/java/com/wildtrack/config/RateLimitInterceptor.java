@@ -23,6 +23,8 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     private static final int NATURAL_QUERY_LIMIT = 2;
     private static final int DEMO_LIMIT = 2;
     private static final int TILE_LIMIT = 300;
+    private static final int GEOFENCE_CREATE_LIMIT = 3;
+    private static final int VERIFY_LIMIT = 10;
 
   // Never evicted, acceptable at this scale (single ECS instance, minimal unique visitors)
     private final ConcurrentHashMap<String, Bucket> buckets = new ConcurrentHashMap<>();
@@ -38,22 +40,26 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         String key = "";
         int limit = 0;
         String apiCalled = request.getRequestURI();
-        if(apiCalled.contains("updateDatabase")){
+        String method = request.getMethod();
+        if (apiCalled.contains("updateDatabase")) {
             key = ip + ":" + ("UPDATE_DATABASE_LIMIT");
             limit = UPDATE_DATABASE_LIMIT;
-        } else if (apiCalled.contains("query")){
+        } else if (apiCalled.contains("verify")) {
+            key = ip + ":" + ("VERIFY_LIMIT");
+            limit = VERIFY_LIMIT;
+        } else if (apiCalled.contains("query")) {
             key = ip + ":" + ("NATURAL_QUERY_LIMIT");
             limit = NATURAL_QUERY_LIMIT;
-        }
-        else if (apiCalled.contains("demo")){
+        } else if (apiCalled.contains("demo")) {
             key = ip + ":" + ("DEMO_LIMIT");
             limit = DEMO_LIMIT;
-        }
-        else if (apiCalled.contains("tile")){
+        } else if (apiCalled.contains("geoFence") && "POST".equals(method)) {
+            key = ip + ":" + ("GEOFENCE_CREATE_LIMIT");
+            limit = GEOFENCE_CREATE_LIMIT;
+        } else if (apiCalled.contains("tile")) {
             key = ip + ":" + ("TILE_LIMIT");
             limit = TILE_LIMIT;
-        }
-        else{
+        } else {
             key = ip + ":" + ("STANDARD_LIMIT");
             limit = STANDARD_LIMIT;
         }

@@ -2,10 +2,11 @@ package com.wildtrack.controller;
 
 import com.wildtrack.dto.GeoFenceDto;
 import com.wildtrack.model.ApiResponse;
+import com.wildtrack.model.VerificationPurpose;
+import com.wildtrack.service.EmailVerificationService;
 import com.wildtrack.service.GeoFenceService;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.data.domain.Page;
@@ -28,6 +29,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class GeoFenceController {
 
     private final GeoFenceService geoFenceService;
+    private final EmailVerificationService emailVerificationService;
 
     @Operation(
             summary = "Retrieves all geo-fences"
@@ -126,9 +128,13 @@ public class GeoFenceController {
             )
     )
     @PostMapping()
-    public ResponseEntity<GeoFenceDto> create(@Valid @RequestBody GeoFenceDto dto) {
-        GeoFenceDto created = geoFenceService.create(dto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    public ResponseEntity<ApiResponse> create(@Valid @RequestBody GeoFenceDto dto) {
+        emailVerificationService.startVerification(
+                dto.getEmail(), VerificationPurpose.GEO_FENCE, dto);
+
+        return ResponseEntity.accepted().body(new ApiResponse(
+                "A 6 digit code has been sent to " + dto.getEmail()
+                        + ". Add the code to POST /api/v1/verify/geoFence to finish creating the geo-fence."));
     }
 
     @Operation(
