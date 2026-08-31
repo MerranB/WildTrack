@@ -30,6 +30,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -374,5 +375,44 @@ class MovebankControllerTest {
                 .andExpect(status().isForbidden());
 
         verify(movebankService, never()).updateDatabase();
+    }
+
+    /**
+     * Tiles are the highest volume endpoint by a wide margin, and a browser that re-requests
+     * one it already holds costs a PostGIS query every time.
+     */
+    @Test
+    void getTileByZ_isCacheableForAnHour() throws Exception {
+        when(movebankService.getTileByZ(anyInt(), anyInt(), anyInt())).thenReturn(new byte[] {1, 2, 3, 4});
+
+        mockMvc.perform(get(TILE_URL, 4, 8, 7))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", containsString("max-age=3600")))
+                .andExpect(header().string("Cache-Control", containsString("public")));
+    }
+
+    /**
+     * Most of the world is empty, so caching the "nothing here" answer saves more traffic
+     * than caching the tiles that actually carry data.
+     */
+    @Test
+    void getTileByZ_cachesEmptyTilesToo() throws Exception {
+        when(movebankService.getTileByZ(anyInt(), anyInt(), anyInt())).thenReturn(new byte[0]);
+
+        mockMvc.perform(get(TILE_URL, 4, 8, 7))
+                .andExpect(status().isNoContent())
+                .andExpect(header().string("Cache-Control", containsString("max-age=3600")));
+    }
+
+    /**
+     * Spring Security marks every response no-store by default, and only leaves it alone when
+     * the controller has already set one. That default is what should survive on an error, and
+     * it is also the reason a tile needs its header set explicitly to be cacheable at all.
+     */
+    @Test
+    void getTileByZ_leavesARejectedTileIndexUncacheable() throws Exception {
+        mockMvc.perform(get(TILE_URL, 4, 99, 7))
+                .andExpect(status().isBadRequest())
+                .andExpect(header().string("Cache-Control", containsString("no-store")));
     }
 }
