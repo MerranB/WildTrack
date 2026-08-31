@@ -22,7 +22,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     private static final int UPDATE_DATABASE_LIMIT = 2;
     private static final int NATURAL_QUERY_LIMIT = 2;
     private static final int DEMO_LIMIT = 2;
-    private static final int TILE_LIMIT = 300;
+    private static final int TILE_LIMIT = 400;
     private static final int GEOFENCE_CREATE_LIMIT = 3;
     private static final int VERIFY_LIMIT = 15;
 

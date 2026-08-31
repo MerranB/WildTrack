@@ -64,7 +64,7 @@ wildtrack:
     - 1073231887
     - 2970193504
 tiles:
-  raw-min-zoom: 11
+  raw-min-zoom: 13
   cells-per-tile: 64
 
 hotspots:

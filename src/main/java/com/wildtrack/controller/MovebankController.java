@@ -7,6 +7,7 @@ import com.wildtrack.service.MovebankEventService;
 import io.swagger.v3.oas.annotations.Parameter;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,8 @@ import com.wildtrack.dto.CoordinateRangeRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.data.domain.Slice;
+
+import java.time.Duration;
 import java.util.List;
 
 
@@ -41,9 +44,9 @@ public class MovebankController {
         }
         byte[] tile = movebankEventService.getTileByZ(z, x, y);
         if (tile == null || tile.length == 0) {
-            return ResponseEntity.noContent().build();
+            return ResponseEntity.noContent().cacheControl(tileCacheControl()).build();
         }
-        return ResponseEntity.ok(tile);
+        return ResponseEntity.ok().cacheControl(tileCacheControl()).body(tile);
     }
 
 
@@ -63,14 +66,11 @@ public class MovebankController {
                 || result.contains("FAILED")
                 || result.contains("NO_VALID_DATA"))) {
             return ResponseEntity.ok(new ApiResponse(result));
-        }
-        else if (result.contains("SUCCESS")) {
+        } else if (result.contains("SUCCESS")) {
             return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(new ApiResponse(result));
-        }
-        else if(result.contains("FAILURE") || result.contains("FAILED")){
+        } else if (result.contains("FAILURE") || result.contains("FAILED")) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse(result));
-        }
-        else {
+        } else {
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(new ApiResponse(result));
         }
     }
@@ -90,7 +90,7 @@ public class MovebankController {
 
     @GetMapping("/allDataPointsByBox")
     public ResponseEntity<Page<MovebankEventDto>> allDataPointsByBox(@Valid @ModelAttribute BoundingBoxRequest request,
-        @ParameterObject Pageable pageable) {
+                                                                     @ParameterObject Pageable pageable) {
         return ResponseEntity.ok(movebankEventService.allDataPointsByBox(request.minLon(), request.minLat(), request.maxLon(), request.maxLat(), pageable));
     }
 
@@ -102,7 +102,7 @@ public class MovebankController {
 
     @GetMapping("/allDataPointsByRange")
     public ResponseEntity<Page<MovebankEventDto>> allDataPointsByRange(@Valid @ModelAttribute CoordinateRangeRequest request,
-        @ParameterObject Pageable pageable) {
+                                                                       @ParameterObject Pageable pageable) {
         return ResponseEntity.ok(movebankEventService.allDataPointsByRange(request.lat(), request.lon(), request.range(), pageable));
     }
 
@@ -112,4 +112,10 @@ public class MovebankController {
     public ResponseEntity<List<Hotspot>> getHotspots() {
         return ResponseEntity.ok(movebankEventService.hotspots());
     }
+
+
+    private CacheControl tileCacheControl() {
+        return CacheControl.maxAge(Duration.ofHours(1)).cachePublic();
+    }
+
 }
